@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="dashboard">
+    <h2>Xush kelibsiz, {{ session["user"] }} 👋</h2>
+    <p>Siz muvaffaqiyatli tizimga kirdingiz</p>
+
+    <div class="dashboard-cards">
+        <div class="card">
+            <h3>👤 Profile</h3>
+            <p>Profil ma’lumotlaringiz</p>
+            <a href="/profile">Ochish</a>
+        </div>
+
+        <div class="card">
+            <h3>ℹ️ About</h3>
+            <p>Sayt haqida ma’lumot</p>
+            <a href="/about">Ochish</a>
+        </div>
+
+        <div class="card logout-card">
+            <h3>🚪 Logout</h3>
+            <p>Tizimdan chiqish</p>
+            <a href="/logout">Chiqish</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

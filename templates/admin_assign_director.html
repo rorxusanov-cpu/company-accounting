@@ -1,0 +1,24 @@
+{% include "navbar.html" %}
+
+<div class="login-box">
+    <h2>👔 Direktorni kompaniyaga biriktirish</h2>
+
+    <form method="POST">
+        <label>Direktor:</label>
+        <select name="director_id" required>
+            {% for d in directors %}
+                <option value="{{ d[0] }}">{{ d[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Kompaniya:</label>
+        <select name="company_id" required>
+            {% for c in companies %}
+                <option value="{{ c[0] }}">{{ c[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+        <button type="submit">🔗 Biriktirish</button>
+    </form>
+</div>

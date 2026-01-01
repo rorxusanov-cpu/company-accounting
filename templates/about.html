@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>About</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="about-box">
+    <h2>Sayt haqida</h2>
+
+    <p>
+        Bu web-sayt <b>Python</b> va <b>Flask</b> frameworki yordamida yaratilgan.
+    </p>
+
+    <p>
+        Loyihada quyidagi funksiyalar mavjud:
+    </p>
+
+    <ul>
+        <li>🔐 Login & Signup</li>
+        <li>👤 Foydalanuvchi profili</li>
+        <li>🧭 Navbar menyu</li>
+        <li>🚪 Logout</li>
+    </ul>
+
+    <p>
+        Muallif: <b>{{ session["user"] }}</b>
+    </p>
+</div>
+
+</body>
+</html>

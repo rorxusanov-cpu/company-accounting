@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-box">
+    <h2>Ro‘yxatdan o‘tish</h2>
+
+    <form method="POST" action="/signup">
+        <input type="text" name="username" placeholder="Login" required>
+        <input type="password" name="password" placeholder="Parol" required>
+        <button type="submit">Ro‘yxatdan o‘tish</button>
+    </form>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <a href="/">Kirish</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+{% include "navbar.html" %}
+
+<div class="login-box">
+    <h2>🏢 Kompaniya qo‘shish</h2>
+
+    <form method="POST">
+        <input type="text" name="name" placeholder="Kompaniya nomi" required>
+        <input type="number" name="balance" placeholder="Boshlang‘ich balans (so‘m)" required>
+        <button type="submit">➕ Qo‘shish</button>
+    </form>
+
+    <hr>
+
+    <h3>📋 Kompaniyalar ro‘yxati</h3>
+
+    {% if companies %}
+    <table border="1" width="100%" cellpadding="6">
+        <tr>
+            <th>ID</th>
+            <th>Nomi</th>
+            <th>Balans</th>
+            <th>Sana</th>
+        </tr>
+        {% for c in companies %}
+        <tr>
+            <td>{{ c[0] }}</td>
+            <td>{{ c[1] }}</td>
+            <td>{{ "{:,}".format(c[2]) }} so‘m</td>
+            <td>{{ c[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+        <p>Hozircha kompaniyalar yo‘q.</p>
+    {% endif %}
+</div>

@@ -1,0 +1,21 @@
+<div class="navbar">
+    <div class="nav-left">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/profile">Profile</a>
+        <a href="/about">About</a>
+        <a href="/expenses">Xarajatlar</a>
+
+        {% if session.get("role") == "admin" %}
+            <a href="/admin/directors">Direktorlar</a>
+            <a href="/admin/companies">Kompaniyalar</a>
+            <a href="/admin/assign-director">Direktor → Kompaniya</a>
+            <a href="/admin/expenses">Barcha xarajatlar</a>
+
+        {% endif %}
+    </div>
+
+    <div class="nav-right">
+        <span class="nav-user">👤 {{ session["user"] }}</span>
+        <a href="/logout" class="logout">Logout</a>
+    </div>
+</div>

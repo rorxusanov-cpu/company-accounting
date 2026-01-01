@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="profile-box">
+    <img src="{{ url_for('static', filename=avatar) }}" class="avatar">
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="avatar" accept="image/*" required>
+    <button type="submit">Avatar yuklash</button>
+</form>
+
+
+    <h2>{{ username }}</h2>
+
+    <div class="profile-info">
+        <p><b>User ID:</b> {{ user_id }}</p>
+        <p><b>Ro‘yxatdan o‘tgan:</b> {{ created_at }}</p>
+        <p><b>Role:</b> {{ role }}</p>
+        <p><b>Role:</b> {{ role }}</p>
+
+
+    </div>
+
+    <div class="profile-actions">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+</div>
+
+</body>
+</html>

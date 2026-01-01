@@ -1,0 +1,22 @@
+{% include "navbar.html" %}
+
+<div class="login-box">
+    <h2>👑 Barcha xarajatlar</h2>
+
+    <table border="1" width="100%" cellpadding="6">
+        <tr>
+            <th>Kompaniya</th>
+            <th>Summa</th>
+            <th>Izoh</th>
+            <th>Sana</th>
+        </tr>
+        {% for e in expenses %}
+        <tr>
+            <td>{{ e[0] }}</td>
+            <td>{{ e[1] }} so‘m</td>
+            <td>{{ e[2] }}</td>
+            <td>{{ e[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>

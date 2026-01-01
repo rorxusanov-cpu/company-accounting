@@ -1,0 +1,131 @@
+/* ===== BODY ===== */
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+    background: #2980b9;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar a {
+    color: white;
+    margin-right: 15px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.navbar a:hover {
+    text-decoration: underline;
+}
+
+/* ===== LOGIN / BOX ===== */
+.login-box {
+    background: white;
+    padding: 30px;
+    width: 320px;
+    margin: 60px auto;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+/* ===== PROFILE ===== */
+.profile-box {
+    background: white;
+    padding: 30px;
+    width: 320px;
+    margin: 40px auto;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.avatar {
+    width: 100px;
+    border-radius: 50%;
+    margin-bottom: 15px;
+}
+
+/* ===== BUTTONS & LINKS ===== */
+button {
+    padding: 10px;
+    width: 100%;
+    background: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1f6391;
+}
+
+.error {
+    color: red;
+    margin-top: 10px;
+}
+.dashboard {
+    padding: 30px;
+    text-align: center;
+}
+
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    max-width: 800px;
+    margin: 30px auto;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.card a {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 14px;
+    background: #2980b9;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+}
+
+.logout-card a {
+    background: #e74c3c;
+}
+input[type="file"] {
+    margin-top: 10px;
+}
+
+.profile-box button {
+    margin-top: 10px;
+    width: auto;
+    padding: 6px 12px;
+}
+.role {
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: white;
+    font-size: 13px;
+}
+
+.role.admin {
+    background: #e74c3c;
+}
+
+.role.user {
+    background: #2ecc71;
+}
