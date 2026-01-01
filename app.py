@@ -307,6 +307,8 @@ def admin_expenses():
     conn.close()
 
     return render_template("admin_expenses.html", expenses=expenses)
+
+
 # ================= DIREKTOR UCHUN XARAJAT QO‘SHISH SAHIFASI =================
 @app.route("/expenses", methods=["GET", "POST"])
 def expenses():
@@ -348,6 +350,39 @@ def expenses():
 
     conn.close()
     return render_template("expenses.html", expenses=expenses)
+# ================= reports"=================
+@app.route("/admin/reports", methods=["GET", "POST"])
+def admin_reports():
+    if "user" not in session or session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
+
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    date_from = request.form.get("date_from")
+    date_to = request.form.get("date_to")
+
+    query = """
+        SELECT companies.name,
+               users.username,
+               SUM(expenses.amount) as total
+        FROM expenses
+        JOIN companies ON expenses.company_id = companies.id
+        JOIN users ON expenses.user_id = users.id
+    """
+
+    params = []
+    if date_from and date_to:
+        query += " WHERE expenses.created_at BETWEEN ? AND ?"
+        params = [date_from, date_to]
+
+    query += " GROUP BY companies.name, users.username"
+
+    c.execute(query, params)
+    reports = c.fetchall()
+    conn.close()
+
+    return render_template("admin_reports.html", reports=reports)
 
 # ================= RUN =================
 if __name__ == "__main__":
