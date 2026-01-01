@@ -1,32 +1,20 @@
 {% include "navbar.html" %}
 
 <div class="login-box">
-    <h2>🧾 Xarajat kiritish</h2>
-
-    <p><b>Qolgan balans:</b> {{ balance }} so‘m</p>
+    <h2>Xarajat qo‘shish</h2>
 
     <form method="POST">
-        <input type="number" name="amount" placeholder="Xarajat summasi" required>
+        <input type="number" name="amount" placeholder="Summa" required>
         <input type="text" name="description" placeholder="Izoh" required>
-        <button type="submit">➕ Qo‘shish</button>
+        <button type="submit">Qo‘shish</button>
     </form>
 
     <hr>
 
-    <h3>📋 Xarajatlar tarixi</h3>
-
-    <table border="1" width="100%" cellpadding="6">
-        <tr>
-            <th>Summa</th>
-            <th>Izoh</th>
-            <th>Sana</th>
-        </tr>
+    <h3>Mening xarajatlarim</h3>
+    <ul>
         {% for e in expenses %}
-        <tr>
-            <td>{{ e[0] }} so‘m</td>
-            <td>{{ e[1] }}</td>
-            <td>{{ e[2] }}</td>
-        </tr>
+            <li>{{ e[0] }} so‘m — {{ e[1] }} ({{ e[2] }})</li>
         {% endfor %}
-    </table>
+    </ul>
 </div>

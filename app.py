@@ -41,6 +41,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER,
+            user_id INTEGER,
             amount INTEGER,
             description TEXT,
             created_at TEXT
@@ -306,6 +307,47 @@ def admin_expenses():
     conn.close()
 
     return render_template("admin_expenses.html", expenses=expenses)
+# ================= DIREKTOR UCHUN XARAJAT QO‘SHISH SAHIFASI =================
+@app.route("/expenses", methods=["GET", "POST"])
+def expenses():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("role") != "director":
+        return "Faqat direktorlar uchun ❌"
+
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    # user id
+    c.execute("SELECT id FROM users WHERE username=?", (session["user"],))
+    user_id = c.fetchone()[0]
+
+    if request.method == "POST":
+        amount = request.form["amount"]
+        description = request.form["description"]
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # vaqtincha company_id = 1
+        c.execute("""
+            INSERT INTO expenses (company_id, user_id, amount, description, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (1, user_id, amount, description, created_at))
+
+        # balansdan ayiramiz
+        c.execute("UPDATE companies SET balance = balance - ? WHERE id = 1", (amount,))
+        conn.commit()
+
+    c.execute("""
+        SELECT amount, description, created_at
+        FROM expenses
+        WHERE user_id=?
+        ORDER BY created_at DESC
+    """, (user_id,))
+    expenses = c.fetchall()
+
+    conn.close()
+    return render_template("expenses.html", expenses=expenses)
 
 # ================= RUN =================
 if __name__ == "__main__":
