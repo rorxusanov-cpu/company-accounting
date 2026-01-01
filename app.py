@@ -3,15 +3,14 @@ import sqlite3
 from datetime import datetime
 import os
 
-
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
-
+DB_NAME = "users.db"
 
 # ================= DATABASE =================
 def init_db():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     # USERS
@@ -52,7 +51,6 @@ def init_db():
     conn.close()
 
 
-
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -61,7 +59,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        conn = sqlite3.connect("users.db")
+        conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         c.execute(
             "SELECT username, role FROM users WHERE username=? AND password=?",
@@ -87,11 +85,11 @@ def signup():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        role = "user"  # director
+        role = "director"
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         try:
-            conn = sqlite3.connect("users.db")
+            conn = sqlite3.connect(DB_NAME)
             c = conn.cursor()
             c.execute(
                 "INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
@@ -120,7 +118,7 @@ def profile():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "SELECT id, username, role, created_at FROM users WHERE username=?",
@@ -138,40 +136,13 @@ def profile():
     )
 
 
-# ================= ABOUT =================
-@app.route("/about")
-def about():
-    if "user" not in session:
-        return redirect(url_for("login"))
-    return render_template("about.html")
-
-
-# ================= ADMIN : DIRECTORS =================
-@app.route("/admin/directors")
-def admin_directors():
-    if "user" not in session or session.get("role") != "admin":
-        return "Ruxsat yo‘q ❌"
-
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute("""
-        SELECT id, username, role, created_at
-        FROM users
-        WHERE role = 'user'
-    """)
-    directors = c.fetchall()
-    conn.close()
-
-    return render_template("admin_directors.html", directors=directors)
-
-
 # ================= ADMIN : COMPANIES =================
 @app.route("/admin/companies", methods=["GET", "POST"])
 def admin_companies():
-    if "user" not in session or session.get("role") != "admin":
+    if session.get("role") != "admin":
         return "Ruxsat yo‘q ❌"
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     if request.method == "POST":
@@ -179,46 +150,37 @@ def admin_companies():
         balance = request.form["balance"]
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        try:
-            c.execute(
-                "INSERT INTO companies (name, balance, created_at) VALUES (?, ?, ?)",
-                (name, balance, created_at)
-            )
-            conn.commit()
-        except:
-            pass
+        c.execute(
+            "INSERT INTO companies (name, balance, created_at) VALUES (?, ?, ?)",
+            (name, balance, created_at)
+        )
+        conn.commit()
 
-    c.execute("SELECT id, name, balance, created_at FROM companies")
+    c.execute("SELECT * FROM companies")
     companies = c.fetchall()
     conn.close()
 
     return render_template("admin_companies.html", companies=companies)
 
 
-# ================= DIREKTORNI BOG‘LASH =================
+# ================= ADMIN : ASSIGN DIRECTOR =================
 @app.route("/admin/assign-director", methods=["GET", "POST"])
 def assign_director():
-    if "user" not in session or session.get("role") != "admin":
+    if session.get("role") != "admin":
         return "Ruxsat yo‘q ❌"
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     if request.method == "POST":
         director_id = request.form["director_id"]
         company_id = request.form["company_id"]
-
-        c.execute(
-            "UPDATE users SET company_id=? WHERE id=?",
-            (company_id, director_id)
-        )
+        c.execute("UPDATE users SET company_id=? WHERE id=?", (company_id, director_id))
         conn.commit()
 
-    # directorlar
-    c.execute("SELECT id, username FROM users WHERE role='user'")
+    c.execute("SELECT id, username FROM users WHERE role='director'")
     directors = c.fetchall()
 
-    # kompaniyalar
     c.execute("SELECT id, name FROM companies")
     companies = c.fetchall()
 
@@ -229,20 +191,21 @@ def assign_director():
         directors=directors,
         companies=companies
     )
-# ================= XARAJAT KIRITADI =================
+
+
+# ================= DIRECTOR : EXPENSES =================
 @app.route("/expenses", methods=["GET", "POST"])
 def expenses():
-    if "user" not in session:
-        return redirect(url_for("login"))
+    if session.get("role") != "director":
+        return "Faqat direktorlar uchun ❌"
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
-    # direktor kompaniyasi
-    c.execute("SELECT company_id FROM users WHERE username=?", (session["user"],))
-    company_id = c.fetchone()[0]
+    c.execute("SELECT id, company_id FROM users WHERE username=?", (session["user"],))
+    user_id, company_id = c.fetchone()
 
-    if company_id is None:
+    if not company_id:
         return "Siz kompaniyaga biriktirilmagansiz ❌"
 
     if request.method == "POST":
@@ -250,30 +213,22 @@ def expenses():
         description = request.form["description"]
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # xarajat qo‘shish
-        c.execute(
-            "INSERT INTO expenses (company_id, amount, description, created_at) VALUES (?, ?, ?, ?)",
-            (company_id, amount, description, created_at)
-        )
+        c.execute("""
+            INSERT INTO expenses (company_id, user_id, amount, description, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (company_id, user_id, amount, description, created_at))
 
-        # balansni kamaytirish
-        c.execute(
-            "UPDATE companies SET balance = balance - ? WHERE id=?",
-            (amount, company_id)
-        )
-
+        c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
         conn.commit()
 
-    # xarajatlar
     c.execute("""
         SELECT amount, description, created_at
         FROM expenses
-        WHERE company_id=?
+        WHERE user_id=?
         ORDER BY id DESC
-    """, (company_id,))
+    """, (user_id,))
     expenses = c.fetchall()
 
-    # balans
     c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
     balance = c.fetchone()[0]
 
@@ -281,108 +236,37 @@ def expenses():
 
     return render_template("expenses.html", expenses=expenses, balance=balance)
 
+
+# ================= ADMIN : REPORTS =================
+@app.route("/admin/reports", methods=["GET", "POST"])
+def admin_reports():
+    if session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    query = """
+        SELECT companies.name, users.username, SUM(expenses.amount)
+        FROM expenses
+        JOIN companies ON expenses.company_id = companies.id
+        JOIN users ON expenses.user_id = users.id
+        GROUP BY companies.name, users.username
+    """
+
+    c.execute(query)
+    reports = c.fetchall()
+    conn.close()
+
+    return render_template("admin_reports.html", reports=reports)
+
+
 # ================= LOGOUT =================
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
-# ================= HAMMA XARAJATLARNI KO‘RADI =================
 
-@app.route("/admin/expenses")
-def admin_expenses():
-    if "user" not in session or session.get("role") != "admin":
-        return "Ruxsat yo‘q ❌"
-
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT companies.name, expenses.amount, expenses.description, expenses.created_at
-        FROM expenses
-        JOIN companies ON expenses.company_id = companies.id
-        ORDER BY expenses.id DESC
-    """)
-
-    expenses = c.fetchall()
-    conn.close()
-
-    return render_template("admin_expenses.html", expenses=expenses)
-
-
-# ================= DIREKTOR UCHUN XARAJAT QO‘SHISH SAHIFASI =================
-@app.route("/expenses", methods=["GET", "POST"])
-def expenses():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-    if session.get("role") != "director":
-        return "Faqat direktorlar uchun ❌"
-
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-
-    # user id
-    c.execute("SELECT id FROM users WHERE username=?", (session["user"],))
-    user_id = c.fetchone()[0]
-
-    if request.method == "POST":
-        amount = request.form["amount"]
-        description = request.form["description"]
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        # vaqtincha company_id = 1
-        c.execute("""
-            INSERT INTO expenses (company_id, user_id, amount, description, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (1, user_id, amount, description, created_at))
-
-        # balansdan ayiramiz
-        c.execute("UPDATE companies SET balance = balance - ? WHERE id = 1", (amount,))
-        conn.commit()
-
-    c.execute("""
-        SELECT amount, description, created_at
-        FROM expenses
-        WHERE user_id=?
-        ORDER BY created_at DESC
-    """, (user_id,))
-    expenses = c.fetchall()
-
-    conn.close()
-    return render_template("expenses.html", expenses=expenses)
-# ================= reports"=================
-@app.route("/admin/reports", methods=["GET", "POST"])
-def admin_reports():
-    if "user" not in session or session.get("role") != "admin":
-        return "Ruxsat yo‘q ❌"
-
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-
-    date_from = request.form.get("date_from")
-    date_to = request.form.get("date_to")
-
-    query = """
-        SELECT companies.name,
-               users.username,
-               SUM(expenses.amount) as total
-        FROM expenses
-        JOIN companies ON expenses.company_id = companies.id
-        JOIN users ON expenses.user_id = users.id
-    """
-
-    params = []
-    if date_from and date_to:
-        query += " WHERE expenses.created_at BETWEEN ? AND ?"
-        params = [date_from, date_to]
-
-    query += " GROUP BY companies.name, users.username"
-
-    c.execute(query, params)
-    reports = c.fetchall()
-    conn.close()
-
-    return render_template("admin_reports.html", reports=reports)
 
 # ================= RUN =================
 if __name__ == "__main__":
