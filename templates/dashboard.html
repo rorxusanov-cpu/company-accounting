@@ -25,7 +25,6 @@
             <a href="{{ url_for('admin_expenses') }}">Barcha xarajatlar</a>
             <a href="{{ url_for('admin_reports') }}">Hisobotlar</a>
             <a href="{{ url_for('admin_balances') }}">➕ Balans to‘ldirish</a>
-
         {% else %}
             <a href="{{ url_for('expenses') }}">Xarajatlar</a>
         {% endif %}
@@ -38,24 +37,12 @@
 
         <h1>Xush kelibsiz 👋</h1>
 
-        <!-- ⚠️ WARNING -->
         {% if warning %}
-            <div style="
-                background:#ffe6e6;
-                color:#b30000;
-                padding:12px;
-                border-radius:8px;
-                margin-bottom:20px;
-                font-weight:bold;
-            ">
-                {{ warning }}
-            </div>
+            <div class="warning">{{ warning }}</div>
         {% endif %}
 
         <!-- STATS -->
         <section class="stats">
-
-            <!-- UMUMIY BALANS -->
             <a href="{{ url_for('admin_balances') }}" class="card-link">
                 <div class="card">
                     <p>Umumiy balans</p>
@@ -63,7 +50,6 @@
                 </div>
             </a>
 
-            <!-- JAMI XARAJATLAR -->
             <a href="{{ url_for('admin_expenses_by_company') }}" class="card-link">
                 <div class="card">
                     <p>Jami xarajatlar</p>
@@ -71,23 +57,34 @@
                 </div>
             </a>
 
-            <!-- FOYDA -->
             <div class="card">
                 <p>Qoldi</p>
                 <h2>{{ profit }} so‘m</h2>
             </div>
 
-            <!-- KOMPANIYALAR -->
             <div class="card">
                 <p>Kompaniyalar</p>
                 <h2>{{ companies_count }} ta</h2>
             </div>
-
         </section>
 
-        <!-- LINE CHART -->
+        <!-- CHART -->
         <section class="chart-box">
-            <h3>📈 Xarajatlar (oxirgi 7 kun)</h3>
+
+            <!-- FILTER BAR -->
+            <div class="filter-bar">
+                <a href="{{ url_for('dashboard', period='day') }}" class="filter-btn">📆 Bugun</a>
+                <a href="{{ url_for('dashboard', period='month') }}" class="filter-btn">📅 Shu oy</a>
+                <a href="{{ url_for('dashboard', period='year') }}" class="filter-btn">📊 Shu yil</a>
+
+                <form method="get" class="date-range">
+                    <input type="date" name="from">
+                    <input type="date" name="to">
+                    <button type="submit">🗓 Oraliq</button>
+                </form>
+            </div>
+
+            <h3>📈 Xarajatlar</h3>
 
             {% if labels and values %}
                 <canvas id="lineChart"></canvas>
@@ -107,7 +104,7 @@
     new Chart(document.getElementById("lineChart"), {
         type: "line",
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: "Xarajatlar",
                 data: values,
@@ -120,9 +117,7 @@
         options: {
             responsive: true,
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                y: { beginAtZero: true }
             }
         }
     });

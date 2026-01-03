@@ -3,32 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <title>Kompaniyalar bo‘yicha xarajatlar</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.08);
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
 </head>
 <body>
 
-<h2>🏢 Kompaniyalar bo‘yicha jami xarajatlar</h2>
+{% include "navbar.html" %}
 
-<table border="1" width="100%" cellpadding="8">
-    <tr>
-        <th>ID</th>
-        <th>Kompaniya</th>
-        <th>Jami xarajat</th>
-        <th>Amal</th>
-    </tr>
+<div class="container">
+    <h2>🏢 Kompaniyalar bo‘yicha jami xarajatlar</h2>
 
-    {% for c in companies %}
-    <tr>
-        <td>{{ c[0] }}</td>
-        <td>{{ c[1] }}</td>
-        <td>{{ "{:,}".format(c[2]) }} so‘m</td>
-        <td>
-            <!-- keyingi qadamda ishlaydi -->
-            <span style="color:gray;">Ko‘rish</span>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Kompaniya</th>
+            <th>Jami xarajat</th>
+            <th>Amal</th>
+        </tr>
+
+        {% for c in companies %}
+        <tr>
+            <td>{{ c[0] }}</td>
+
+            <!-- Kompaniya nomi ham bosiladigan -->
+            <td>
+                <a href="{{ url_for('admin_company_directors', company_id=c[0]) }}">
+                    {{ c[1] }}
+                </a>
+            </td>
+
+            <td>{{ "{:,}".format(c[2]) }} so‘m</td>
+
+            <td>
+                <a class="btn"
+                   href="{{ url_for('admin_company_directors', company_id=c[0]) }}">
+                    Ko‘rish
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 
 </body>
 </html>

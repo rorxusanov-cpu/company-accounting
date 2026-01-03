@@ -340,3 +340,28 @@ body.dark .notif-item:hover {
     background: #1e293b;
 }
 
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.filter-btn {
+    padding: 6px 12px;
+    background: #2563eb;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.filter-btn:hover {
+    background: #1d4ed8;
+}
+
+.date-range input,
+.date-range button {
+    padding: 6px;
+    border-radius: 6px;
+}

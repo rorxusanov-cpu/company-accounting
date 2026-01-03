@@ -2,44 +2,187 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <title>{{ name }} – Batafsil</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{{ company[1] }} – Batafsil</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+
+    <style>
+        .company-header {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+            margin-bottom: 25px;
+        }
+
+        .company-meta {
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.06);
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,.06);
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: #eef2ff;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            background: #dbe4ff;
+        }
+
+        .date-range input,
+        .date-range button {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 <body>
 
 {% include "navbar.html" %}
 
-<div class="login-box">
-    <h2>🏢 {{ name }}</h2>
+<div class="layout">
+<main class="main">
 
-    <p><b>Balans:</b> {{ balance }} so‘m</p>
-    <p><b>Yaratilgan:</b> {{ created_at }}</p>
+    <!-- HEADER -->
+    <div class="company-header">
+        <h1>🏢 {{ company[1] }}</h1>
+        <div class="company-meta">
+            Balans: <strong>{{ company[2] }} so‘m</strong> |
+            Yaratilgan: {{ company[3] }}
+        </div>
+    </div>
 
-    <hr>
+    <!-- STATS -->
+    <div class="stats">
+        <div class="card">
+            <p>💰 Balans</p>
+            <h2>{{ company[2] }} so‘m</h2>
+        </div>
 
-    <h3>👤 Direktorlar</h3>
-    {% if directors %}
-        <ul>
+        <div class="card">
+            <p>💸 Jami xarajat</p>
+            <h2>{{ total_expenses }} so‘m</h2>
+        </div>
+
+        <div class="card">
+            <p>👤 Direktorlar</p>
+            <h2>{{ directors|length }} ta</h2>
+        </div>
+    </div>
+
+    <!-- DIRECTORS -->
+    <div class="section">
+        <h3>👤 Direktorlar</h3>
+
+        {% if directors %}
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Login</th>
+                <th>Jami xarajat</th>
+            </tr>
             {% for d in directors %}
-                <li>{{ d[0] }}</li>
+            <tr>
+                <td>{{ d.id }}</td>
+                <td>{{ d.username }}</td>
+                <td>{{ d.total }} so‘m</td>
+            </tr>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p>Direktor biriktirilmagan</p>
-    {% endif %}
+        </table>
+        {% else %}
+            <p>Direktor yo‘q</p>
+        {% endif %}
+    </div>
 
-    <hr>
+    <!-- EXPENSES -->
+    <div class="section">
+        <h3>💸 Xarajatlar</h3>
 
-    <h3>💸 Xarajatlar</h3>
-    {% if expenses %}
-        <ul>
+        <!-- FILTER -->
+        <div class="filter-bar">
+            <a class="filter-btn" href="?period=day">📆 Bugun</a>
+            <a class="filter-btn" href="?period=month">📅 Shu oy</a>
+
+            <form method="get" class="date-range">
+                <input type="date" name="from" required>
+                <input type="date" name="to" required>
+                <button type="submit">🗓 Oraliq</button>
+            </form>
+        </div>
+
+        {% if expenses %}
+        <table>
+            <tr>
+                <th>Direktor</th>
+                <th>Summa</th>
+                <th>Izoh</th>
+                <th>Sana</th>
+            </tr>
             {% for e in expenses %}
-                <li>{{ e[0] }} so‘m — {{ e[1] }} <small>({{ e[2] }})</small></li>
+            <tr>
+                <td>{{ e[0] or "—" }}</td>
+                <td>{{ e[1] }} so‘m</td>
+                <td>{{ e[2] }}</td>
+                <td>{{ e[3] }}</td>
+            </tr>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p>Xarajatlar yo‘q</p>
-    {% endif %}
+        </table>
+        {% else %}
+            <p>Xarajat yo‘q</p>
+        {% endif %}
+    </div>
+
+</main>
 </div>
 
 </body>

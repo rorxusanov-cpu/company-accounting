@@ -116,7 +116,10 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ================= DASHBOARD =================
+
+
+    # ================= ADMIN DASHBOARD =================
+ # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -128,7 +131,21 @@ def dashboard():
     role = session.get("role")
     username = session.get("user")
 
-    # ================= ADMIN DASHBOARD =================
+    # ===== FILTERLAR =====
+    period = request.args.get("period")        # day | month | year
+    date_from = request.args.get("from")       # YYYY-MM-DD
+    date_to = request.args.get("to")           # YYYY-MM-DD
+
+    # ===== DEFAULT =====
+    total_balance = 0
+    total_expenses = 0
+    profit = 0
+    companies_count = 0
+    labels = []
+    values = []
+    warning = None
+
+    # ================= ADMIN =================
     if role == "admin":
         c.execute("SELECT IFNULL(SUM(balance),0) FROM companies")
         total_balance = c.fetchone()[0]
@@ -141,60 +158,147 @@ def dashboard():
 
         profit = total_balance - total_expenses
 
-        labels, values = [], []
-        for i in range(6, -1, -1):
-            day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-            c.execute(
-                "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE date(created_at)=?",
-                (day,)
-            )
-            labels.append(day)
-            values.append(c.fetchone()[0])
+        # ===== FILTER LOGIC (ADMIN) =====
+        if period == "day":
+            c.execute("""
+                SELECT strftime('%H', created_at), SUM(amount)
+                FROM expenses
+                WHERE date(created_at)=date('now')
+                GROUP BY strftime('%H', created_at)
+            """)
+            data = c.fetchall()
+            labels = [f"{h}:00" for h, _ in data]
+            values = [v for _, v in data]
 
-    # ================= DIRECTOR DASHBOARD =================
+        elif period == "month":
+            c.execute("""
+                SELECT date(created_at), SUM(amount)
+                FROM expenses
+                WHERE strftime('%Y-%m', created_at)=strftime('%Y-%m','now')
+                GROUP BY date(created_at)
+            """)
+            data = c.fetchall()
+            labels = [d for d, _ in data]
+            values = [v for _, v in data]
+
+        elif period == "year":
+            c.execute("""
+                SELECT strftime('%Y-%m', created_at), SUM(amount)
+                FROM expenses
+                WHERE strftime('%Y', created_at)=strftime('%Y','now')
+                GROUP BY strftime('%Y-%m', created_at)
+            """)
+            data = c.fetchall()
+            labels = [d for d, _ in data]
+            values = [v for _, v in data]
+
+        elif date_from and date_to:
+            c.execute("""
+                SELECT date(created_at), SUM(amount)
+                FROM expenses
+                WHERE date(created_at) BETWEEN ? AND ?
+                GROUP BY date(created_at)
+            """, (date_from, date_to))
+            data = c.fetchall()
+            labels = [d for d, _ in data]
+            values = [v for _, v in data]
+
+        else:
+            # DEFAULT: oxirgi 7 kun
+            for i in range(6, -1, -1):
+                day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+                c.execute(
+                    "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE date(created_at)=?",
+                    (day,)
+                )
+                labels.append(day)
+                values.append(c.fetchone()[0])
+
+    # ================= DIRECTOR =================
     else:
-        # direktor kompaniyasi
-        c.execute("SELECT company_id FROM users WHERE username=?", (username,))
+        c.execute(
+            "SELECT company_id FROM users WHERE username=?",
+            (username,)
+        )
         row = c.fetchone()
 
         if not row or not row[0]:
-            conn.close()
-            return render_template(
-                "dashboard.html",
-                warning="Siz kompaniyaga biriktirilmagansiz",
-                total_balance=0,
-                total_expenses=0,
-                profit=0,
-                companies_count=0,
-                labels=[],
-                values=[]
-            )
+            warning = "Siz kompaniyaga biriktirilmagansiz"
+        else:
+            company_id = row[0]
 
-        company_id = row[0]
-
-        c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
-        total_balance = c.fetchone()[0]
-
-        c.execute(
-            "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?",
-            (company_id,)
-        )
-        total_expenses = c.fetchone()[0]
-
-        profit = total_balance - total_expenses
-        companies_count = 1
-
-        labels, values = [], []
-        for i in range(6, -1, -1):
-            day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
             c.execute(
-                """SELECT IFNULL(SUM(amount),0)
-                   FROM expenses
-                   WHERE company_id=? AND date(created_at)=?""",
-                (company_id, day)
+                "SELECT IFNULL(balance,0) FROM companies WHERE id=?",
+                (company_id,)
             )
-            labels.append(day)
-            values.append(c.fetchone()[0])
+            total_balance = c.fetchone()[0]
+
+            c.execute(
+                "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?",
+                (company_id,)
+            )
+            total_expenses = c.fetchone()[0]
+
+            profit = total_balance - total_expenses
+            companies_count = 1
+
+            # ===== FILTER LOGIC (DIRECTOR) =====
+            if period == "day":
+                c.execute("""
+                    SELECT strftime('%H', created_at), SUM(amount)
+                    FROM expenses
+                    WHERE company_id=? AND date(created_at)=date('now')
+                    GROUP BY strftime('%H', created_at)
+                """, (company_id,))
+                data = c.fetchall()
+                labels = [f"{h}:00" for h, _ in data]
+                values = [v for _, v in data]
+
+            elif period == "month":
+                c.execute("""
+                    SELECT date(created_at), SUM(amount)
+                    FROM expenses
+                    WHERE company_id=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')
+                    GROUP BY date(created_at)
+                """, (company_id,))
+                data = c.fetchall()
+                labels = [d for d, _ in data]
+                values = [v for _, v in data]
+
+            elif period == "year":
+                c.execute("""
+                    SELECT strftime('%Y-%m', created_at), SUM(amount)
+                    FROM expenses
+                    WHERE company_id=? AND strftime('%Y', created_at)=strftime('%Y','now')
+                    GROUP BY strftime('%Y-%m', created_at)
+                """, (company_id,))
+                data = c.fetchall()
+                labels = [d for d, _ in data]
+                values = [v for _, v in data]
+
+            elif date_from and date_to:
+                c.execute("""
+                    SELECT date(created_at), SUM(amount)
+                    FROM expenses
+                    WHERE company_id=? AND date(created_at) BETWEEN ? AND ?
+                    GROUP BY date(created_at)
+                """, (company_id, date_from, date_to))
+                data = c.fetchall()
+                labels = [d for d, _ in data]
+                values = [v for _, v in data]
+
+            else:
+                # DEFAULT: oxirgi 7 kun
+                for i in range(6, -1, -1):
+                    day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+                    c.execute(
+                        """SELECT IFNULL(SUM(amount),0)
+                           FROM expenses
+                           WHERE company_id=? AND date(created_at)=?""",
+                        (company_id, day)
+                    )
+                    labels.append(day)
+                    values.append(c.fetchone()[0])
 
     conn.close()
 
@@ -206,7 +310,7 @@ def dashboard():
         companies_count=companies_count,
         labels=labels,
         values=values,
-        warning=None
+        warning=warning
     )
 
 # ================= ADMIN : COMPANIES =================
@@ -349,56 +453,6 @@ def expenses():
 
 
 
-@app.route("/admin/company/<int:company_id>")
-def admin_company_detail(company_id):
-    if "user" not in session or session.get("role") != "admin":
-        return "Ruxsat yo‘q ❌"
-
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-
-    # kompaniya
-    c.execute(
-        "SELECT name, balance, created_at FROM companies WHERE id=?",
-        (company_id,)
-    )
-    company = c.fetchone()
-
-    if not company:
-        conn.close()
-        return "Kompaniya topilmadi ❌"
-
-    name, balance, created_at = company
-
-    # direktorlar
-    c.execute("""
-        SELECT username
-        FROM users
-        WHERE role='director' AND company_id=?
-    """, (company_id,))
-    directors = c.fetchall()
-
-    # xarajatlar
-    c.execute("""
-        SELECT amount, description, created_at
-        FROM expenses
-        WHERE company_id=?
-        ORDER BY id DESC
-    """, (company_id,))
-    expenses = c.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "admin_company_detail.html",
-        company_id=company_id,
-        name=name,
-        balance=balance,
-        created_at=created_at,
-        directors=directors,
-        expenses=expenses
-    )
-
 
 # ================= ADMIN : DIRECTOR DETAIL =================
 @app.route("/admin/director/<int:director_id>")
@@ -457,8 +511,8 @@ def admin_director_detail(director_id):
 # ================= ADMIN : DIRECTORS =================
 @app.route("/admin/directors")
 def admin_directors():
-    if "user" not in session or session.get("role") != "admin":
-        return redirect(url_for("login"))
+    if session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
@@ -471,15 +525,95 @@ def admin_directors():
             u.created_at
         FROM users u
         LEFT JOIN companies c ON u.company_id = c.id
-        WHERE u.role = 'director'
+        WHERE u.role='director'
         ORDER BY u.id DESC
     """)
     directors = c.fetchall()
     conn.close()
 
+    return render_template("admin_directors.html", directors=directors)
+
+
+
+@app.route("/admin/company/<int:company_id>")
+def admin_company_detail(company_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
+
+    conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    # COMPANY
+    c.execute(
+        "SELECT id, name, balance, created_at FROM companies WHERE id=?",
+        (company_id,)
+    )
+    company = c.fetchone()
+    if not company:
+        conn.close()
+        return "Kompaniya topilmadi ❌"
+
+    # TOTAL EXPENSES
+    c.execute(
+        "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?",
+        (company_id,)
+    )
+    total_expenses = c.fetchone()[0]
+
+    # DIRECTORS + THEIR EXPENSES
+    c.execute("""
+        SELECT 
+            u.id,
+            u.username,
+            IFNULL(SUM(e.amount),0) AS total
+        FROM users u
+        LEFT JOIN expenses e 
+            ON e.company_id = u.company_id
+        WHERE u.company_id=? AND u.role='director'
+        GROUP BY u.id
+    """, (company_id,))
+    directors = c.fetchall()
+
+    # FILTER
+    period = request.args.get("period")
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+
+    query = """
+        SELECT 
+            u.username,
+            e.amount,
+            e.description,
+            e.created_at
+        FROM expenses e
+        LEFT JOIN users u 
+            ON u.company_id = e.company_id AND u.role='director'
+        WHERE e.company_id=?
+    """
+    params = [company_id]
+
+    if period == "day":
+        query += " AND date(e.created_at)=date('now')"
+    elif period == "month":
+        query += " AND strftime('%Y-%m', e.created_at)=strftime('%Y-%m','now')"
+    elif from_date and to_date:
+        query += " AND date(e.created_at) BETWEEN ? AND ?"
+        params.extend([from_date, to_date])
+
+    query += " ORDER BY e.created_at DESC"
+
+    c.execute(query, params)
+    expenses = c.fetchall()
+
+    conn.close()
+
     return render_template(
-        "admin_directors.html",
-        directors=directors
+        "admin_company_detail.html",
+        company=company,
+        total_expenses=total_expenses,
+        directors=directors,
+        expenses=expenses
     )
 
 
@@ -490,15 +624,23 @@ def admin_expenses():
         return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row   # ⭐ MUHIM
     c = conn.cursor()
+
     c.execute("""
-        SELECT c.name, e.amount, e.description, e.created_at
+        SELECT 
+            c.name        AS company,
+            CAST(e.amount AS INTEGER) AS amount,
+            e.description,
+            e.created_at
         FROM expenses e
-        JOIN companies c ON e.company_id=c.id
+        JOIN companies c ON e.company_id = c.id
         ORDER BY e.id DESC
     """)
+
     expenses = c.fetchall()
     conn.close()
+
     return render_template("admin_expenses.html", expenses=expenses)
 
 
@@ -509,52 +651,70 @@ def admin_expenses_by_company():
 
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
+
     c.execute("""
-        SELECT c.id, c.name, IFNULL(SUM(e.amount),0)
+        SELECT 
+            c.id,
+            c.name,
+            IFNULL(SUM(e.amount),0) AS total_expense
         FROM companies c
-        LEFT JOIN expenses e ON e.company_id=c.id
-        GROUP BY c.id
+        LEFT JOIN expenses e ON e.company_id = c.id
+        GROUP BY c.id, c.name
+        ORDER BY total_expense DESC
     """)
+
     companies = c.fetchall()
     conn.close()
-    return render_template("admin_expenses_companies.html", companies=companies)
+
+    return render_template(
+        "admin_expenses_companies.html",
+        companies=companies
+    )
+
 @app.route("/admin/assign-director", methods=["POST"])
 def assign_director():
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
+    if session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
 
     director_id = request.form["director_id"]
     company_id = request.form["company_id"]
 
-    c.execute(
-        "UPDATE users SET company_id=? WHERE id=? AND role='director'",
-        (company_id, director_id)
-    )
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    c.execute("""
+        UPDATE users 
+        SET company_id=? 
+        WHERE id=? AND role='director'
+    """, (company_id, director_id))
 
     conn.commit()
     conn.close()
 
-    return redirect(url_for("admin_director_detail", director_id=director_id))
+    return redirect(
+        url_for("admin_director_detail", director_id=director_id)
+    )
+
 @app.route("/admin/unassign-director/<int:director_id>")
 def unassign_director(director_id):
-    if "user" not in session or session.get("role") != "admin":
+    if session.get("role") != "admin":
         return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
-    c.execute(
-        "UPDATE users SET company_id = NULL WHERE id=? AND role='director'",
-        (director_id,)
-    )
+    c.execute("""
+        UPDATE users 
+        SET company_id=NULL 
+        WHERE id=? AND role='director'
+    """, (director_id,))
 
     conn.commit()
     conn.close()
 
-    return redirect(url_for("admin_director_detail", director_id=director_id))
-
-
-
+    return redirect(
+        url_for("admin_director_detail", director_id=director_id)
+    )
 
 # ================= ADMIN : REPORTS =================
 @app.route("/admin/reports")
@@ -606,6 +766,41 @@ def admin_balances():
     conn.close()
 
     return render_template("admin_balances.html", companies=companies)
+@app.route("/admin/company/<int:company_id>/directors")
+def admin_company_directors(company_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo‘q ❌"
+
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    # Kompaniya nomi
+    c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+    company = c.fetchone()
+    if not company:
+        conn.close()
+        return "Kompaniya topilmadi ❌"
+
+    # Direktorlar bo‘yicha xarajatlar
+    c.execute("""
+        SELECT 
+            u.username,
+            IFNULL(SUM(e.amount), 0)
+        FROM users u
+        LEFT JOIN expenses e ON e.company_id = u.company_id
+        WHERE u.company_id = ? AND u.role='director'
+        GROUP BY u.username
+    """, (company_id,))
+
+    data = c.fetchall()
+    conn.close()
+
+    return render_template(
+        "admin_company_directors.html",
+        company_name=company[0],
+        data=data
+    )
+
 
 # ================= RUN =================
 if __name__ == "__main__":

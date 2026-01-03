@@ -7,7 +7,7 @@
 
         {% if session.get("role") == "admin" %}
             <a href="{{ url_for('admin_companies') }}">Kompaniyalar</a>
-            <a href="{{ url_for('admin_directors') }}">Direktorlar</a>
+            <a href="{{ url_for('assign_director') }}">Direktorlar</a>
             <a href="{{ url_for('admin_expenses') }}">Xarajatlar</a>
         {% else %}
             <a href="{{ url_for('expenses') }}">Xarajatlarim</a>
