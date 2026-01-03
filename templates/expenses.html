@@ -7,27 +7,117 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.08);
+            margin-bottom: 24px;
+        }
+
         .error {
             background:#fee2e2;
             color:#b91c1c;
+            padding:12px;
+            border-radius:10px;
+            margin-bottom:15px;
+            font-weight:600;
+        }
+
+        .balance-box {
+            background: linear-gradient(135deg,#06b6d4,#3b82f6);
+            color:white;
+            padding:20px;
+            border-radius:14px;
+            font-size:18px;
+        }
+
+        .balance-box strong {
+            font-size:30px;
+            display:block;
+            margin-top:5px;
+        }
+
+        .expense-form {
+            display:flex;
+            gap:12px;
+            flex-wrap:wrap;
+        }
+
+        .expense-form input {
+            flex:1;
             padding:10px;
             border-radius:8px;
-            margin-bottom:15px;
+            border:1px solid #ddd;
         }
 
-        .balance {
-            background:#ecfeff;
-            padding:10px;
+        .expense-form button {
+            background:#4f46e5;
+            color:white;
+            border:none;
+            padding:10px 18px;
             border-radius:8px;
-            margin-bottom:15px;
+            cursor:pointer;
         }
 
-        ul {
-            padding-left:20px;
+        .filter-bar {
+            display:flex;
+            gap:12px;
+            align-items:center;
+            flex-wrap:wrap;
         }
 
-        li {
-            margin-bottom:8px;
+        .filter-bar input {
+            padding:8px;
+            border-radius:8px;
+            border:1px solid #ddd;
+        }
+
+        .filter-bar button {
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:8px 14px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        .filter-bar a {
+            text-decoration:none;
+            color:#2563eb;
+            font-weight:500;
+        }
+
+        .expenses-list {
+            list-style:none;
+            padding:0;
+            margin:0;
+        }
+
+        .expenses-list li {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:14px;
+            border-bottom:1px solid #eee;
+        }
+
+        .expenses-list li:last-child {
+            border-bottom:none;
+        }
+
+        .amount {
+            font-weight:700;
+        }
+
+        .date {
+            color:#6b7280;
+            font-size:13px;
         }
     </style>
 </head>
@@ -35,7 +125,7 @@
 
 {% include "navbar.html" %}
 
-<div class="login-box">
+<div class="container">
 
     <h2>💸 Xarajatlar</h2>
 
@@ -43,56 +133,65 @@
         <div class="error">{{ error }}</div>
     {% endif %}
 
-    <div class="balance">
-        <strong>Joriy balans:</strong> {{ balance }} so‘m
+    <!-- BALANCE -->
+    <div class="card balance-box">
+        Joriy balans
+        <strong>{{ balance }} so‘m</strong>
     </div>
 
-    <!-- ================= XARAJAT QO‘SHISH ================= -->
-    {% if balance > 0 %}
-    <h3>Xarajat qo‘shish</h3>
+    <!-- ADD EXPENSE -->
+    <div class="card">
+        <h3>➕ Xarajat qo‘shish</h3>
 
-    <form method="POST">
-        <input type="number" name="amount" placeholder="Summa" required min="1">
-        <input type="text" name="description" placeholder="Izoh" required>
+        {% if balance > 0 %}
+        <form method="POST" class="expense-form">
+            <input type="number" name="amount" placeholder="Summa" required min="1">
+            <input type="text" name="description" placeholder="Izoh" required>
+            <button type="submit">Qo‘shish</button>
+        </form>
+        {% else %}
+            <p style="color:#b91c1c;font-weight:600;">
+                ❌ Balans 0. Xarajat qo‘sha olmaysiz.
+            </p>
+        {% endif %}
+    </div>
 
-        <button type="submit">➕ Qo‘shish</button>
-    </form>
-    {% else %}
-        <p style="color:red;">❌ Balans 0. Xarajat qo‘sha olmaysiz.</p>
-    {% endif %}
+    <!-- FILTER -->
+    <div class="card">
+        <h3>🔍 Filter</h3>
 
-    <hr>
+        <form method="GET" class="filter-bar">
+            <label>📅 Kun</label>
+            <input type="date" name="day" value="{{ request.args.get('day','') }}">
 
-    <!-- ================= FILTER ================= -->
-    <form method="GET" style="margin-bottom:20px;">
-        <label>📅 Kun:</label>
-        <input type="date" name="day" value="{{ request.args.get('day','') }}">
+            <label>📆 Oy</label>
+            <input type="month" name="month" value="{{ request.args.get('month','') }}">
 
-        <label style="margin-left:10px;">📆 Oy:</label>
-        <input type="month" name="month" value="{{ request.args.get('month','') }}">
+            <button type="submit">Filter</button>
+            <a href="{{ url_for('expenses') }}">♻️ Tozalash</a>
+        </form>
+    </div>
 
-        <button type="submit">🔍 Filter</button>
-        <a href="{{ url_for('expenses') }}">♻️ Tozalash</a>
-    </form>
+    <!-- EXPENSES -->
+    <div class="card">
+        <h3>📄 Mening xarajatlarim</h3>
 
-    <hr>
-
-    <!-- ================= XARAJATLAR RO‘YXATI ================= -->
-    <h3>Mening xarajatlarim</h3>
-
-    {% if expenses %}
-        <ul>
-            {% for e in expenses %}
+        {% if expenses %}
+            <ul class="expenses-list">
+                {% for e in expenses %}
                 <li>
-                    <strong>{{ e[0] }} so‘m</strong> —
-                    {{ e[1] }}
-                    <small style="color:#666;">({{ e[2] }})</small>
+                    <div>
+                        <div class="amount">{{ e[0] }} so‘m</div>
+                        <div>{{ e[1] }}</div>
+                    </div>
+                    <div class="date">{{ e[2] }}</div>
                 </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Hozircha xarajat yo‘q</p>
-    {% endif %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Hozircha xarajat yo‘q</p>
+        {% endif %}
+    </div>
 
 </div>
 
