@@ -3,132 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <title>Login | Company Accounting</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Main CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body {
-            background: linear-gradient(135deg, #4f46e5, #3b82f6);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: Arial, sans-serif;
-        }
 
-        .auth-card {
-            background: white;
-            width: 360px;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 20px 40px rgba(0,0,0,.2);
-            text-align: center;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        p {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: #2563eb;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #1d4ed8;
-        }
-
-        .error {
-            background: #fee2e2;
-            color: #b91c1c;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-
-        .link {
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-        .link a {
-            cursor: pointer;
-            color: #2563eb;
-            text-decoration: underline;
-        }
-
-        .hidden {
-            display: none;
-        }
-    </style>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div class="auth-card">
-    <h1>🏢 Company Accounting</h1>
-    <p>Moliyaviy nazorat tizimi</p>
+<div class="auth-wrapper">
+    <div class="auth-card">
 
-    {% if error %}
-        <div class="error">{{ error }}</div>
-    {% endif %}
+        <div class="auth-header">
+            <div class="logo">🏢</div>
+            <h1>Company Accounting</h1>
+            <p>Moliyaviy nazorat tizimi</p>
+        </div>
 
-    <!-- 🔐 LOGIN FORM -->
-    <form id="loginForm" method="POST">
-        <input type="text" name="username" placeholder="Login" required>
-        <input type="password" name="password" placeholder="Parol" required>
-        <button type="submit">Kirish</button>
-    </form>
+        {% if error %}
+        <div class="auth-error">
+            {{ error }}
+        </div>
+        {% endif %}
 
-    <!-- 📝 SIGNUP FORM -->
-    <form id="signupForm" class="hidden" method="POST" action="{{ url_for('signup') }}">
-        <input type="text" name="username" placeholder="Yangi login" required>
-        <input type="password" name="password" placeholder="Yangi parol" required>
-        <button type="submit">Ro‘yxatdan o‘tish</button>
-    </form>
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label>Login</label>
+                <input type="text" name="username" required>
+            </div>
 
-    <div class="link">
-        <span id="toggleText">
-            <a onclick="showSignup()">Ro‘yxatdan o‘tish</a>
-        </span>
+            <div class="form-group">
+                <label>Parol</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn-primary">
+                Kirish
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="{{ url_for('signup') }}">Ro‘yxatdan o‘tish</a>
+        </div>
+
     </div>
 </div>
 
+</body>
 <script>
-    function showSignup() {
-        document.getElementById("loginForm").classList.add("hidden");
-        document.getElementById("signupForm").classList.remove("hidden");
-        document.getElementById("toggleText").innerHTML =
-            '<a onclick="showLogin()">Kirish</a>';
-    }
-
-    function showLogin() {
-        document.getElementById("signupForm").classList.add("hidden");
-        document.getElementById("loginForm").classList.remove("hidden");
-        document.getElementById("toggleText").innerHTML =
-            '<a onclick="showSignup()">Ro‘yxatdan o‘tish</a>';
-    }
+document.querySelector('.auth-form').addEventListener('submit', function () {
+    const btn = document.getElementById('loginBtn');
+    btn.innerHTML = '⏳ Tekshirilmoqda...';
+    btn.disabled = true;
+});
 </script>
 
-</body>
+{% if error %}
+<script>
+    window.onload = function () {
+        const card = document.querySelector('.auth-card');
+        card.classList.add('shake');
+
+        setTimeout(() => {
+            card.classList.remove('shake');
+        }, 500);
+    }
+</script>
+{% endif %}
+
 </html>

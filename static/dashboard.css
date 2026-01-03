@@ -25,19 +25,23 @@ body {
 
 .sidebar a {
     display: block;
-    padding: 10px 14px;
-    margin-bottom: 8px;
-    text-decoration: none;
-    color: #333;
-    border-radius: 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: #475569;
     font-weight: 500;
+    transition: all .2s ease;
 }
 
-.sidebar a.active,
 .sidebar a:hover {
-    background: #4f6ef7;
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+.sidebar a.active {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
     color: white;
 }
+
 
 /* ===== MAIN ===== */
 .main {

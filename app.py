@@ -910,11 +910,6 @@ def clear_notification():
     return redirect(request.referrer or url_for("dashboard"))
 
 
-@app.route("/sw.js")
-def sw():
-    return app.send_static_file("sw.js")
-
-
 
 
 # ================= RUN =================

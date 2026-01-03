@@ -84,7 +84,7 @@ body {
 }
 
 /* ===== CARDS ===== */
-.cards {
+s {
     display: grid;
     grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
     gap: 20px;
@@ -99,15 +99,36 @@ body {
 }
 
 .card h3 {
-    font-size: 14px;
-    color: #64748b;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
 }
-
+y
 .card p {
     font-size: 22px;
     font-weight: bold;
     margin-top: 10px;
+}.card
+
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.08);
+    transition: all .25s ease;
 }
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 45px rgba(0,0,0,.15);
+}
+
+.card p {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
 
 /* ===== TABLE ===== */
 table {
@@ -799,4 +820,188 @@ body.dark .notif-item:hover {
         color: #ef4444;
         font-weight: 600;
     }
+}
+/* ======================================================
+   AUTH (LOGIN / SIGNUP) STYLES
+   ====================================================== */
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(
+        270deg,
+        #4f46e5,
+        #6366f1,
+        #3b82f6,
+        #2563eb
+    );
+    background-size: 600% 600%;
+
+    animation: gradientFlow 3s ease infinite;
+}
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+.auth-card {
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 40px 35px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header .logo {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.auth-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.auth-header p {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.auth-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.auth-form .form-group {
+    margin-bottom: 18px;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-size: 15px;
+    outline: none;
+}
+
+.auth-form input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    background: #4f46e5;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background: #4338ca;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.auth-footer a {
+    font-size: 14px;
+    color: #4f46e5;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+.auth-form input {
+    transition: all 0.25s ease;
+}
+
+.auth-form input:focus {
+    transform: scale(1.02);
+}
+.btn-primary {
+    transition: all 0.2s ease;
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+}
+/* ===== AUTH ANIMATIONS ===== */
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-card {
+    animation: slideUpFade 0.6s ease-out;
+}
+/* ===== ERROR SHAKE ANIMATION ===== */
+
+@keyframes shake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+    100% { transform: translateX(0); }
+}
+
+.auth-card.shake {
+    animation: shake 0.4s ease;
+}
+body {
+    background: #f5f7fb;
+}
+
+.content {
+    padding: 35px;
 }
