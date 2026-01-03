@@ -9,18 +9,26 @@
 
 {% include "navbar.html" %}
 
-<div class="login-box" style="width:95%; max-width:1200px;">
-    <h2>🏢 Kompaniyalar</h2>
+<div class="layout">
+    <main class="main">
 
-    <!-- QO‘SHISH -->
-    <form method="POST" style="margin-bottom:20px;">
-        <input type="text" name="name" placeholder="Kompaniya nomi" required>
-        <input type="number" name="balance" placeholder="Boshlang‘ich balans" required>
-        <button type="submit">➕ Qo‘shish</button>
+        <div class="page-header">
+    <h1>🏢 Kompaniyalar</h1>
+    <p>Kompaniyalar ro‘yxati va moliyaviy holati</p>
+</div>
+
+<!-- ADD COMPANY -->
+<div class="card form-card">
+    <form method="POST" class="add-form">
+        <input type="text" name="name" placeholder="🏢 Kompaniya nomi" required>
+        <input type="number" name="balance" placeholder="💰 Boshlang‘ich balans" required>
+        <button type="submit" class="btn primary">➕ Qo‘shish</button>
     </form>
+</div>
 
-    <!-- JADVAL -->
-    <table border="1" width="100%" cellpadding="6">
+<!-- TABLE -->
+<div class="card">
+    <table class="modern-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -35,32 +43,43 @@
         <tbody>
             {% for c in companies %}
             <tr>
-                <td>{{ c[0] }}</td>
-                <td>{{ c[1] }}</td>
-                <td>{{ "{:,}".format(c[2]) }} so‘m</td>
-                <td>{{ c[3] }}</td>
-                <td>{{ c[4] }} so‘m</td>
+                <td>{{ c.id }}</td>
 
+                <td class="company-name">
+                    🏢 {{ c.name }}
+                </td>
 
-                <!-- HOLAT -->
+                <td class="money">{{ c.balance }} so‘m</td>
+
                 <td>
-                    {% if c[2] < 500000 %}
-                        🔴 Xavfli
-                    {% elif c[2] < 2000000 %}
-                        🟡 Ogohlantirish
+                    {% if c.director %}
+                        👤 {{ c.director }}
                     {% else %}
-                        🟢 OK
+                        <span class="muted">—</span>
                     {% endif %}
                 </td>
 
-                <!-- AMALLAR -->
+                <td class="money">{{ c.total_expense }} so‘m</td>
+
                 <td>
-                    <a href="/admin/company/{{ c[0] }}">👁 Batafsil</a>
+                    {% if c.balance <= 0 %}
+                        <span class="badge danger">🔴 Xavfli</span>
+                    {% else %}
+                        <span class="badge success">🟢 Normal</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <a href="{{ url_for('admin_company_detail', company_id=c.id) }}"
+                       class="btn outline">👁 Batafsil</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+    </main>
 </div>
 
 </body>

@@ -12,6 +12,17 @@ app.secret_key = "VERY_SECRET_KEY_123456"
 def init_db():
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
+    
+    c.execute("""
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    message TEXT,
+    is_read INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -156,7 +167,8 @@ def dashboard():
         c.execute("SELECT COUNT(*) FROM companies")
         companies_count = c.fetchone()[0]
 
-        profit = total_balance - total_expenses
+        profit = total_balance
+
 
         # ===== FILTER LOGIC (ADMIN) =====
         if period == "day":
@@ -320,28 +332,46 @@ def admin_companies():
         return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row   # ⭐ MUHIM
     c = conn.cursor()
 
+    # ================= ADD COMPANY =================
     if request.method == "POST":
+        name = request.form["name"]
+        balance = int(request.form["balance"])
+
         c.execute(
-            "INSERT INTO companies (name, balance, created_at) VALUES (?, ?, ?)",
-            (
-                request.form["name"],
-                int(request.form["balance"]),
-                datetime.now().strftime("%Y-%m-%d %H:%M")
-            )
+            "INSERT INTO companies (name, balance) VALUES (?, ?)",
+            (name, balance)
         )
         conn.commit()
 
+        return redirect(url_for("admin_companies"))
+
+    # ================= GET COMPANIES =================
     c.execute("""
-        SELECT c.id, c.name, c.balance, IFNULL(u.username,'—'), c.created_at
+        SELECT 
+            c.id,
+            c.name,
+            c.balance,
+            u.username AS director,
+            IFNULL(SUM(e.amount), 0) AS total_expense
         FROM companies c
-        LEFT JOIN users u ON u.company_id = c.id
+        LEFT JOIN users u ON u.company_id = c.id AND u.role = 'director'
+        LEFT JOIN expenses e ON e.company_id = c.id
+        GROUP BY c.id
+        ORDER BY c.id DESC
     """)
+
     companies = c.fetchall()
     conn.close()
 
-    return render_template("admin_companies.html", companies=companies)
+    return render_template(
+        "admin_companies.html",
+        companies=companies
+    )
+
+
 # ================= EXPENSES (DIRECTOR) =================
 @app.route("/expenses", methods=["GET", "POST"])
 def expenses():
@@ -426,6 +456,16 @@ def expenses():
 
         conn.commit()
 
+        # 🔔 ===== NOTIFICATION (ASOSIY QO‘SHILGAN JOY) =====
+        session["last_expense"] = {
+            "message": f"💸 {amount} so‘m xarajat qo‘shildi",
+            "time": datetime.now().strftime("%H:%M")
+        }
+
+        # 🔁 POST → REDIRECT (refresh muammosi bo‘lmasin)
+        conn.close()
+        return redirect(url_for("expenses"))
+
     # ================= XARAJATLARNI KO‘RISH =================
     c.execute("""
         SELECT amount, description, created_at
@@ -453,60 +493,84 @@ def expenses():
 
 
 
-
 # ================= ADMIN : DIRECTOR DETAIL =================
-@app.route("/admin/director/<int:director_id>")
+@app.route("/admin/director/<int:director_id>", methods=["GET", "POST"])
 def admin_director_detail(director_id):
-    if "user" not in session or session.get("role") != "admin":
+    # 🔐 Faqat admin
+    if session.get("role") != "admin":
         return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
+    # ================= DIRECTOR =================
     c.execute("""
-        SELECT u.username, u.created_at, u.company_id,
-               IFNULL(cmp.name, 'Biriktirilmagan')
+        SELECT 
+            u.id,
+            u.username,
+            u.created_at,
+            c.name AS company
         FROM users u
-        LEFT JOIN companies cmp ON u.company_id = cmp.id
+        LEFT JOIN companies c ON u.company_id = c.id
         WHERE u.id = ?
     """, (director_id,))
-    row = c.fetchone()
+    director = c.fetchone()
 
-    if not row:
+    if not director:
         conn.close()
         return "Direktor topilmadi ❌"
 
-    username, created_at, company_id, company_name = row
+    # ================= POST → BIRIKTIRISH =================
+    if request.method == "POST":
+        company_id = request.form.get("company_id")
 
-    balance = 0
-    total_expenses = 0
+        if company_id:
+            c.execute(
+                "UPDATE users SET company_id=? WHERE id=?",
+                (company_id, director_id)
+            )
+            conn.commit()
 
-    if company_id:
-        c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
-        balance = c.fetchone()[0]
+        conn.close()
+        return redirect(url_for("admin_director_detail", director_id=director_id))
 
-        c.execute(
-            "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?",
-            (company_id,)
-        )
-        total_expenses = c.fetchone()[0]
-
+    # ================= KOMPANIYALAR RO‘YXATI =================
     c.execute("SELECT id, name FROM companies")
     companies = c.fetchall()
+
+    # ================= BALANS =================
+    if director["company"]:
+        c.execute("""
+            SELECT balance 
+            FROM companies 
+            WHERE name=?
+        """, (director["company"],))
+        company_balance = c.fetchone()["balance"]
+
+        c.execute("""
+            SELECT IFNULL(SUM(amount), 0)
+            FROM expenses
+            WHERE company_id = (
+                SELECT id FROM companies WHERE name=?
+            )
+        """, (director["company"],))
+        total_expenses = c.fetchone()[0]
+    else:
+        company_balance = 0
+        total_expenses = 0
 
     conn.close()
 
     return render_template(
         "admin_director_detail.html",
-        director_id=director_id,
-        username=username,
-        created_at=created_at,
-        company_id=company_id,
-        company_name=company_name,
-        balance=balance,
-        total_expenses=total_expenses,
-        companies=companies
+        director=director,
+        companies=companies,
+        company_balance=company_balance,
+        total_expenses=total_expenses
     )
+
+
 
 # ================= ADMIN : DIRECTORS =================
 @app.route("/admin/directors")
@@ -515,23 +579,28 @@ def admin_directors():
         return "Ruxsat yo‘q ❌"
 
     conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row   # 🔥 MUHIM
     c = conn.cursor()
 
     c.execute("""
         SELECT 
             u.id,
             u.username,
-            IFNULL(c.name, 'Biriktirilmagan'),
+            c.name AS company,
             u.created_at
         FROM users u
         LEFT JOIN companies c ON u.company_id = c.id
-        WHERE u.role='director'
+        WHERE u.role = 'director'
         ORDER BY u.id DESC
     """)
+
     directors = c.fetchall()
     conn.close()
 
-    return render_template("admin_directors.html", directors=directors)
+    return render_template(
+        "admin_directors.html",
+        directors=directors
+    )
 
 
 
@@ -623,11 +692,17 @@ def admin_expenses():
     if session.get("role") != "admin":
         return "Ruxsat yo‘q ❌"
 
+    # filter parametrlari
+    day   = request.args.get("day")
+    month = request.args.get("month")
+    date_from = request.args.get("from")
+    date_to   = request.args.get("to")
+
     conn = sqlite3.connect("users.db")
-    conn.row_factory = sqlite3.Row   # ⭐ MUHIM
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    c.execute("""
+    query = """
         SELECT 
             c.name        AS company,
             CAST(e.amount AS INTEGER) AS amount,
@@ -635,13 +710,45 @@ def admin_expenses():
             e.created_at
         FROM expenses e
         JOIN companies c ON e.company_id = c.id
-        ORDER BY e.id DESC
-    """)
+        WHERE 1=1
+    """
+    params = []
 
+    # 📅 KUNLIK
+    if day:
+        query += " AND date(e.created_at) = ?"
+        params.append(day)
+
+    # 📆 OYLIK
+    elif month:
+        query += " AND strftime('%Y-%m', e.created_at) = ?"
+        params.append(month)
+
+    # 🗓 FROM – TO
+    elif date_from and date_to:
+        query += " AND date(e.created_at) BETWEEN ? AND ?"
+        params.extend([date_from, date_to])
+
+    query += " ORDER BY e.id DESC"
+
+    c.execute(query, params)
     expenses = c.fetchall()
     conn.close()
 
-    return render_template("admin_expenses.html", expenses=expenses)
+    return render_template(
+        "admin_expenses.html",
+        expenses=expenses
+    )
+
+@app.context_processor
+def inject_notifications():
+    return {
+        "notifications": [],
+        "last_expense": session.get("last_expense")
+    }
+
+
+
 
 
 @app.route("/admin/expenses/companies")
@@ -703,18 +810,15 @@ def unassign_director(director_id):
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
-    c.execute("""
-        UPDATE users 
-        SET company_id=NULL 
-        WHERE id=? AND role='director'
-    """, (director_id,))
+    c.execute(
+        "UPDATE users SET company_id=NULL WHERE id=?",
+        (director_id,)
+    )
 
     conn.commit()
     conn.close()
 
-    return redirect(
-        url_for("admin_director_detail", director_id=director_id)
-    )
+    return redirect(url_for("admin_director_detail", director_id=director_id))
 
 # ================= ADMIN : REPORTS =================
 @app.route("/admin/reports")
@@ -800,6 +904,11 @@ def admin_company_directors(company_id):
         company_name=company[0],
         data=data
     )
+@app.route("/clear-notification", methods=["POST"])
+def clear_notification():
+    session.pop("last_expense", None)
+    return redirect(request.referrer or url_for("dashboard"))
+
 
 
 # ================= RUN =================

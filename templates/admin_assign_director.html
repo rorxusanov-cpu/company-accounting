@@ -24,11 +24,18 @@
         </select>
 
         <label>Kompaniya:</label>
-        <select name="company_id" required>
-            {% for c in companies %}
-                <option value="{{ c[0] }}">{{ c[1] }}</option>
-            {% endfor %}
-        </select>
+       <select name="company_id" required>
+    <option value="" disabled selected>
+        — Kompaniyani tanlang —
+    </option>
+
+    {% for c in companies %}
+        <option value="{{ c.id }}">
+            {{ c.name }}
+        </option>
+    {% endfor %}
+</select>
+
 
         <br><br>
         <button type="submit">🔗 Biriktirish</button>

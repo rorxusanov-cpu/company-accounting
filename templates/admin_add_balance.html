@@ -14,13 +14,17 @@
 
     <form method="POST">
         <label>Kompaniya:</label>
-        <select name="company_id" required>
-            {% for c in companies %}
-                <option value="{{ c[0] }}">
-                    {{ c[1] }} — {{ "{:,}".format(c[2]) }} so‘m
-                </option>
-            {% endfor %}
-        </select>
+        <<select name="company_id" required>
+    <option value="" disabled selected>
+        — Kompaniyani tanlang —
+    </option>
+
+    {% for c in companies %}
+        <option value="{{ c.id }}">
+            {{ c.name }}
+        </option>
+    {% endfor %}
+</select>
 
         <input type="number" name="amount" placeholder="Qo‘shiladigan summa (so‘m)" required>
         <input type="text" name="note" placeholder="Izoh (masalan: investor, to‘ldirish)">

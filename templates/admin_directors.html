@@ -3,38 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <title>Direktorlar</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+
+    <style>
+        .page-header {
+            background: white;
+            padding: 20px 25px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.06);
+            margin-bottom: 25px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .badge-company {
+            background: #ecfeff;
+            color: #0369a1;
+        }
+
+        .empty {
+            padding: 30px;
+            text-align: center;
+            color: #777;
+        }
+    </style>
 </head>
 <body>
 
 {% include "navbar.html" %}
 
-<h1>👔 Direktorlar</h1>
+<div class="layout">
+    <main class="main">
 
-<table border="1" cellpadding="10">
-    <tr>
-        <th>ID</th>
-        <th>Login</th>
-        <th>Kompaniya</th>
-        <th>Yaratilgan sana</th>
-    </tr>
+        <!-- HEADER -->
+        <div class="page-header">
+            <h1>👔 Direktorlar</h1>
+        </div>
 
-    {% for d in directors %}
-    <tr>
-        <td>{{ d[0] }}</td>
+        <!-- TABLE CARD -->
+        <div class="card">
+            {% if directors %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Login</th>
+                        <th>Kompaniya</th>
+                        <th>Yaratilgan sana</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in directors %}
+                    <tr>
+                        <td>{{ d.id }}</td>
 
-        <!-- 👇 BOSILADIGAN LOGIN -->
-        <td>
-            <a href="{{ url_for('admin_director_detail', director_id=d[0]) }}">
-                {{ d[1] }}
-            </a>
-        </td>
+                        <td>
+                            <a href="{{ url_for('admin_director_detail', director_id=d.id) }}">
+                                {{ d.username }}
+                            </a>
+                        </td>
 
-        <td>{{ d[2] }}</td>
-        <td>{{ d[3] }}</td>
-    </tr>
-    {% endfor %}
-</table>
+                        <td>
+                            {% if d.company %}
+                                <span class="badge badge-company">
+                                    {{ d.company }}
+                                </span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td>{{ d.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div class="empty">
+                    👤 Hozircha direktorlar yo‘q
+                </div>
+            {% endif %}
+        </div>
+
+    </main>
+</div>
 
 </body>
 </html>

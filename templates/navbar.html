@@ -7,7 +7,7 @@
 
         {% if session.get("role") == "admin" %}
             <a href="{{ url_for('admin_companies') }}">Kompaniyalar</a>
-            <a href="{{ url_for('assign_director') }}">Direktorlar</a>
+            <a href="{{ url_for('admin_directors') }}">Direktorlar</a>
             <a href="{{ url_for('admin_expenses') }}">Xarajatlar</a>
         {% else %}
             <a href="{{ url_for('expenses') }}">Xarajatlarim</a>
@@ -15,28 +15,39 @@
     </div>
 
     <div class="navbar-right">
-        <!-- Notification -->
+        <!-- 🔔 Notification -->
         <button id="notifBtn" class="icon-btn" title="Bildirishnomalar">🔔</button>
 
-        <!-- Theme -->
+        <!-- 🌙 Theme -->
         <button id="themeToggle" class="icon-btn" title="Theme">🌙</button>
 
-        <!-- User -->
-        <span class="user">👤 {{ session['user'] }}</span>
+        <!-- 👤 User -->
+        <span class="user">👤 {{ session.get('user') }}</span>
 
-        <!-- Logout -->
+        <!-- 🚪 Logout -->
         <a href="{{ url_for('logout') }}" class="logout-btn">Chiqish</a>
     </div>
 </div>
 
 <!-- ===== NOTIFICATION DROPDOWN ===== -->
+<!-- ===== NOTIFICATION DROPDOWN ===== -->
 <div class="notif-box" id="notifBox">
     <h4>🔔 Bildirishnomalar</h4>
 
-    <div class="notif-item">💸 Yangi xarajat qo‘shildi</div>
-    <div class="notif-item">🏢 Kompaniya balansi yangilandi</div>
-    <div class="notif-item muted">📭 Hozircha yangi xabar yo‘q</div>
+    {% if last_expense %}
+        <div class="notif-item">
+            <div class="notif-msg">{{ last_expense.message }}</div>
+            <div class="notif-time">🕒 {{ last_expense.time }}</div>
+        </div>
+
+        <form method="post" action="{{ url_for('clear_notification') }}">
+            <button class="notif-clear">🗑 Tozalash</button>
+        </form>
+    {% else %}
+        <div class="notif-item muted">📭 Hozircha yangi xabar yo‘q</div>
+    {% endif %}
 </div>
+
 
 <!-- ===== SCRIPTS ===== -->
 <script>
@@ -83,11 +94,10 @@ const notifBox = document.getElementById("notifBox");
 
 notifBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    notifBox.style.display =
-        notifBox.style.display === "block" ? "none" : "block";
+    notifBox.classList.toggle("show");
 });
 
 document.addEventListener("click", () => {
-    notifBox.style.display = "none";
+    notifBox.classList.remove("show");
 });
 </script>
