@@ -1,37 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
+    <meta charset="UTF-8">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 {% include "navbar.html" %}
 
-<div class="dashboard">
-    <h2>Xush kelibsiz, {{ session["user"] }} 👋</h2>
-    <p>Siz muvaffaqiyatli tizimga kirdingiz</p>
+<div class="layout">
 
-    <div class="dashboard-cards">
-        <div class="card">
-            <h3>👤 Profile</h3>
-            <p>Profil ma’lumotlaringiz</p>
-            <a href="/profile">Ochish</a>
-        </div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h2>📊 Company</h2>
 
-        <div class="card">
-            <h3>ℹ️ About</h3>
-            <p>Sayt haqida ma’lumot</p>
-            <a href="/about">Ochish</a>
-        </div>
+        <a class="active" href="{{ url_for('dashboard') }}">Dashboard</a>
 
-        <div class="card logout-card">
-            <h3>🚪 Logout</h3>
-            <p>Tizimdan chiqish</p>
-            <a href="/logout">Chiqish</a>
-        </div>
-    </div>
+        {% if session.get("role") == "admin" %}
+            <a href="{{ url_for('admin_companies') }}">Kompaniyalar</a>
+            <a href="{{ url_for('admin_directors') }}">Direktorlar</a>
+            <a href="{{ url_for('admin_expenses') }}">Barcha xarajatlar</a>
+            <a href="{{ url_for('admin_reports') }}">Hisobotlar</a>
+            <a href="{{ url_for('admin_balances') }}">➕ Balans to‘ldirish</a>
+
+        {% else %}
+            <a href="{{ url_for('expenses') }}">Xarajatlar</a>
+        {% endif %}
+
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <h1>Xush kelibsiz 👋</h1>
+
+        <!-- ⚠️ WARNING -->
+        {% if warning %}
+            <div style="
+                background:#ffe6e6;
+                color:#b30000;
+                padding:12px;
+                border-radius:8px;
+                margin-bottom:20px;
+                font-weight:bold;
+            ">
+                {{ warning }}
+            </div>
+        {% endif %}
+
+        <!-- STATS -->
+        <section class="stats">
+
+            <!-- UMUMIY BALANS -->
+            <a href="{{ url_for('admin_balances') }}" class="card-link">
+                <div class="card">
+                    <p>Umumiy balans</p>
+                    <h2>{{ total_balance }} so‘m</h2>
+                </div>
+            </a>
+
+            <!-- JAMI XARAJATLAR -->
+            <a href="{{ url_for('admin_expenses_by_company') }}" class="card-link">
+                <div class="card">
+                    <p>Jami xarajatlar</p>
+                    <h2>{{ total_expenses }} so‘m</h2>
+                </div>
+            </a>
+
+            <!-- FOYDA -->
+            <div class="card">
+                <p>Qoldi</p>
+                <h2>{{ profit }} so‘m</h2>
+            </div>
+
+            <!-- KOMPANIYALAR -->
+            <div class="card">
+                <p>Kompaniyalar</p>
+                <h2>{{ companies_count }} ta</h2>
+            </div>
+
+        </section>
+
+        <!-- LINE CHART -->
+        <section class="chart-box">
+            <h3>📈 Xarajatlar (oxirgi 7 kun)</h3>
+
+            {% if labels and values %}
+                <canvas id="lineChart"></canvas>
+            {% else %}
+                <p>Hozircha ma’lumot yo‘q</p>
+            {% endif %}
+        </section>
+
+    </main>
 </div>
+
+{% if labels and values %}
+<script>
+    const labels = {{ labels | tojson }};
+    const values = {{ values | tojson }};
+
+    new Chart(document.getElementById("lineChart"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Xarajatlar",
+                data: values,
+                borderColor: "#4f6ef7",
+                backgroundColor: "rgba(79,110,247,0.15)",
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
 
 </body>
 </html>

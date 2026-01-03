@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Direktor profili</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div style="max-width:900px;margin:30px auto;padding:25px;background:#fff;border-radius:10px">
+
+    <h1 style="margin-bottom:10px">👤 Direktor profili</h1>
+
+    <!-- ASOSIY MA’LUMOT -->
+    <div style="line-height:1.8">
+        <p><b>Login:</b> {{ username }}</p>
+        <p><b>Kompaniya:</b> {{ company_name }}</p>
+        <p><b>Yaratilgan sana:</b> {{ created_at }}</p>
+    </div>
+
+    <hr>
+
+    <!-- MOLIYAVIY MA’LUMOT -->
+    <h2>📊 Moliyaviy ma’lumotlar</h2>
+
+    <p>
+        💰 <b>Kompaniya balansi:</b>
+        {{ balance }} so‘m
+    </p>
+
+    <p>
+        💸 <b>Jami xarajat:</b>
+        {{ total_expenses }} so‘m
+    </p>
+
+    <hr>
+
+    <!-- KOMPANIYAGA BIRIKTIRISH / AJRATISH -->
+    {% if company_id %}
+        <a href="{{ url_for('unassign_director', director_id=director_id) }}">
+            <button style="
+                background:#e74c3c;
+                color:white;
+                padding:10px 18px;
+                border:none;
+                border-radius:6px;
+                cursor:pointer;
+                font-size:15px
+            ">
+                ❌ Kompaniyadan ajratish
+            </button>
+        </a>
+    {% else %}
+        <h3>➕ Kompaniyaga biriktirish</h3>
+
+        <form method="POST" action="{{ url_for('assign_director') }}">
+            <input type="hidden" name="director_id" value="{{ director_id }}">
+
+            <select name="company_id" required style="padding:8px;width:250px">
+                <option value="">— Kompaniyani tanlang —</option>
+                {% for c in companies %}
+                    <option value="{{ c[0] }}">{{ c[1] }}</option>
+                {% endfor %}
+            </select>
+
+            <br><br>
+
+            <button type="submit" style="
+                background:#2ecc71;
+                color:white;
+                padding:10px 18px;
+                border:none;
+                border-radius:6px;
+                cursor:pointer;
+                font-size:15px
+            ">
+                ✅ Biriktirish
+            </button>
+        </form>
+    {% endif %}
+
+    <hr>
+
+    <a href="{{ url_for('admin_directors') }}">⬅️ Direktorlar ro‘yxatiga qaytish</a>
+
+</div>
+
+</body>
+</html>

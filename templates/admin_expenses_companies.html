@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Kompaniyalar bo‘yicha xarajatlar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<h2>🏢 Kompaniyalar bo‘yicha jami xarajatlar</h2>
+
+<table border="1" width="100%" cellpadding="8">
+    <tr>
+        <th>ID</th>
+        <th>Kompaniya</th>
+        <th>Jami xarajat</th>
+        <th>Amal</th>
+    </tr>
+
+    {% for c in companies %}
+    <tr>
+        <td>{{ c[0] }}</td>
+        <td>{{ c[1] }}</td>
+        <td>{{ "{:,}".format(c[2]) }} so‘m</td>
+        <td>
+            <!-- keyingi qadamda ishlaydi -->
+            <span style="color:gray;">Ko‘rish</span>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

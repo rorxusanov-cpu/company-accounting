@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ name }} – Batafsil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="login-box">
+    <h2>🏢 {{ name }}</h2>
+
+    <p><b>Balans:</b> {{ balance }} so‘m</p>
+    <p><b>Yaratilgan:</b> {{ created_at }}</p>
+
+    <hr>
+
+    <h3>👤 Direktorlar</h3>
+    {% if directors %}
+        <ul>
+            {% for d in directors %}
+                <li>{{ d[0] }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Direktor biriktirilmagan</p>
+    {% endif %}
+
+    <hr>
+
+    <h3>💸 Xarajatlar</h3>
+    {% if expenses %}
+        <ul>
+            {% for e in expenses %}
+                <li>{{ e[0] }} so‘m — {{ e[1] }} <small>({{ e[2] }})</small></li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Xarajatlar yo‘q</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

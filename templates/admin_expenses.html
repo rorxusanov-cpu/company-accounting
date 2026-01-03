@@ -1,22 +1,50 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Barcha xarajatlar</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
 {% include "navbar.html" %}
 
-<div class="login-box">
+<div class="login-box" style="width:95%; max-width:1200px;">
     <h2>👑 Barcha xarajatlar</h2>
 
-    <table border="1" width="100%" cellpadding="6">
-        <tr>
-            <th>Kompaniya</th>
-            <th>Summa</th>
-            <th>Izoh</th>
-            <th>Sana</th>
-        </tr>
-        {% for e in expenses %}
-        <tr>
-            <td>{{ e[0] }}</td>
-            <td>{{ e[1] }} so‘m</td>
-            <td>{{ e[2] }}</td>
-            <td>{{ e[3] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <!-- ACTION BUTTONS -->
+    <div style="margin-bottom:15px;">
+        <a href="/admin/export/expenses">📄 Excel (CSV)</a> |
+        <a href="/admin/export/expenses/pdf">📄 PDF</a> |
+        <a href="/admin/expenses/filter">📆 Sana bo‘yicha filter</a>
+    </div>
+
+    {% if expenses %}
+        <table border="1" width="100%" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>Kompaniya</th>
+                    <th>Summa</th>
+                    <th>Izoh</th>
+                    <th>Sana</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e[0] }}</td>
+                    <td>{{ "{:,}".format(e[1]) }} so‘m</td>
+                    <td>{{ e[2] }}</td>
+                    <td>{{ e[3] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Hozircha xarajatlar yo‘q.</p>
+    {% endif %}
 </div>
+
+</body>
+</html>

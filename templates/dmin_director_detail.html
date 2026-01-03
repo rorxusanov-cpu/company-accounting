@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Direktor profili</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="container">
+    <h1>👤 Direktor profili</h1>
+
+    <p><b>Login:</b> {{ username }}</p>
+    <p><b>Yaratilgan sana:</b> {{ created_at }}</p>
+
+    <hr>
+
+    <h2>🏢 Kompaniya</h2>
+
+    {% if company_id %}
+        <p><b>Nomi:</b> {{ company_name }}</p>
+        <p><b>Balans:</b> {{ "{:,}".format(company_balance) }} so‘m</p>
+    {% else %}
+        <p style="color:red;"><b>Biriktirilmagan</b></p>
+    {% endif %}
+
+    <hr>
+
+    <h2>📉 Xarajatlar statistikasi</h2>
+
+    <ul>
+        <li>📅 Bugun: <b>{{ "{:,}".format(stats.today) }} so‘m</b></li>
+        <li>🗓 1 hafta: <b>{{ "{:,}".format(stats.week) }} so‘m</b></li>
+        <li>📆 Joriy oy: <b>{{ "{:,}".format(stats.month) }} so‘m</b></li>
+        <li>⏮ Oldingi oy: <b>{{ "{:,}".format(stats.prev_month) }} so‘m</b></li>
+        <li>📊 3 oy: <b>{{ "{:,}".format(stats.three_months) }} so‘m</b></li>
+        <li>📈 1 yil: <b>{{ "{:,}".format(stats.year) }} so‘m</b></li>
+    </ul>
+
+    <hr>
+
+    <h2>🔘 Boshqaruv</h2>
+
+    <!-- KOMPANIYA BIRIKTIRISH -->
+    <form method="post" action="{{ url_for('assign_director_company', director_id=director_id) }}">
+        <select name="company_id">
+            <option value="">— Kompaniya tanlang —</option>
+            {% for c in companies %}
+                <option value="{{ c[0] }}">{{ c[1] }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">➕ Biriktirish</button>
+    </form>
+
+    {% if company_id %}
+        <br>
+        <a href="{{ url_for('unassign_director', director_id=director_id) }}"
+           onclick="return confirm('Rostdan ajratilsinmi?')"
+           style="color:red;">
+            ❌ Kompaniyadan ajratish
+        </a>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

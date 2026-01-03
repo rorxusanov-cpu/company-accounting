@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Kompaniya balansini to‘ldirish</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="login-box" style="width:500px;">
+    <h2>➕ Kompaniya balansini to‘ldirish</h2>
+
+    <form method="POST">
+        <label>Kompaniya:</label>
+        <select name="company_id" required>
+            {% for c in companies %}
+                <option value="{{ c[0] }}">
+                    {{ c[1] }} — {{ "{:,}".format(c[2]) }} so‘m
+                </option>
+            {% endfor %}
+        </select>
+
+        <input type="number" name="amount" placeholder="Qo‘shiladigan summa (so‘m)" required>
+        <input type="text" name="note" placeholder="Izoh (masalan: investor, to‘ldirish)">
+        <button type="submit">➕ Qo‘shish</button>
+    </form>
+</div>
+
+</body>
+</html>

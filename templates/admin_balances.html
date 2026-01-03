@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Kompaniyalar balansi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            margin: 40px auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,.15);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+        }
+
+        input {
+            padding: 6px;
+            width: 90px;
+        }
+
+        button {
+            padding: 6px 10px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>💰 Kompaniyalar balansi</h2>
+
+    <table>
+        <tr>
+            <th>Kompaniya</th>
+            <th>Balans</th>
+            <th>To‘ldirish</th>
+        </tr>
+
+        {% for c in companies %}
+        <tr>
+            <td>{{ c[1] }}</td>
+            <td>{{ "{:,}".format(c[2]) }} so‘m</td>
+            <td>
+                <form method="POST">
+                    <input type="hidden" name="company_id" value="{{ c[0] }}">
+                    <input type="number" name="amount" placeholder="+ so‘m" required>
+                    <button type="submit">➕</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+</body>
+</html>

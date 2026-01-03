@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
+    <meta charset="UTF-8">
     <title>Direktorlar</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -8,27 +9,32 @@
 
 {% include "navbar.html" %}
 
-<div class="login-box">
-    <h2>Direktorlar ro‘yxati</h2>
+<h1>👔 Direktorlar</h1>
 
-    <table border="1" width="100%" cellpadding="6">
-        <tr>
-            <th>ID</th>
-            <th>Login</th>
-            <th>Role</th>
-            <th>Ro‘yxatdan o‘tgan</th>
-        </tr>
+<table border="1" cellpadding="10">
+    <tr>
+        <th>ID</th>
+        <th>Login</th>
+        <th>Kompaniya</th>
+        <th>Yaratilgan sana</th>
+    </tr>
 
-        {% for d in directors %}
-        <tr>
-            <td>{{ d[0] }}</td>
-            <td>{{ d[1] }}</td>
-            <td>{{ d[2] }}</td>
-            <td>{{ d[3] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</div>
+    {% for d in directors %}
+    <tr>
+        <td>{{ d[0] }}</td>
+
+        <!-- 👇 BOSILADIGAN LOGIN -->
+        <td>
+            <a href="{{ url_for('admin_director_detail', director_id=d[0]) }}">
+                {{ d[1] }}
+            </a>
+        </td>
+
+        <td>{{ d[2] }}</td>
+        <td>{{ d[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
 
 </body>
 </html>

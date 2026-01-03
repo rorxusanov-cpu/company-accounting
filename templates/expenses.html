@@ -1,20 +1,100 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Xarajatlar</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .error {
+            background:#fee2e2;
+            color:#b91c1c;
+            padding:10px;
+            border-radius:8px;
+            margin-bottom:15px;
+        }
+
+        .balance {
+            background:#ecfeff;
+            padding:10px;
+            border-radius:8px;
+            margin-bottom:15px;
+        }
+
+        ul {
+            padding-left:20px;
+        }
+
+        li {
+            margin-bottom:8px;
+        }
+    </style>
+</head>
+<body>
+
 {% include "navbar.html" %}
 
 <div class="login-box">
-    <h2>Xarajat qo‘shish</h2>
+
+    <h2>💸 Xarajatlar</h2>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <div class="balance">
+        <strong>Joriy balans:</strong> {{ balance }} so‘m
+    </div>
+
+    <!-- ================= XARAJAT QO‘SHISH ================= -->
+    {% if balance > 0 %}
+    <h3>Xarajat qo‘shish</h3>
 
     <form method="POST">
-        <input type="number" name="amount" placeholder="Summa" required>
+        <input type="number" name="amount" placeholder="Summa" required min="1">
         <input type="text" name="description" placeholder="Izoh" required>
-        <button type="submit">Qo‘shish</button>
+
+        <button type="submit">➕ Qo‘shish</button>
+    </form>
+    {% else %}
+        <p style="color:red;">❌ Balans 0. Xarajat qo‘sha olmaysiz.</p>
+    {% endif %}
+
+    <hr>
+
+    <!-- ================= FILTER ================= -->
+    <form method="GET" style="margin-bottom:20px;">
+        <label>📅 Kun:</label>
+        <input type="date" name="day" value="{{ request.args.get('day','') }}">
+
+        <label style="margin-left:10px;">📆 Oy:</label>
+        <input type="month" name="month" value="{{ request.args.get('month','') }}">
+
+        <button type="submit">🔍 Filter</button>
+        <a href="{{ url_for('expenses') }}">♻️ Tozalash</a>
     </form>
 
     <hr>
 
+    <!-- ================= XARAJATLAR RO‘YXATI ================= -->
     <h3>Mening xarajatlarim</h3>
-    <ul>
-        {% for e in expenses %}
-            <li>{{ e[0] }} so‘m — {{ e[1] }} ({{ e[2] }})</li>
-        {% endfor %}
-    </ul>
+
+    {% if expenses %}
+        <ul>
+            {% for e in expenses %}
+                <li>
+                    <strong>{{ e[0] }} so‘m</strong> —
+                    {{ e[1] }}
+                    <small style="color:#666;">({{ e[2] }})</small>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Hozircha xarajat yo‘q</p>
+    {% endif %}
+
 </div>
+
+</body>
+</html>

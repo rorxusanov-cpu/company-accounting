@@ -1,23 +1,93 @@
+<!-- ===== NAVBAR ===== -->
 <div class="navbar">
-    <div class="nav-left">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/profile">Profile</a>
-        <a href="/about">About</a>
-        <a href="/expenses">Xarajatlar</a>
+    <div class="navbar-left">
+        <strong class="brand">🏢 Company Accounting</strong>
+
+        <a href="{{ url_for('dashboard') }}">Bosh sahifa</a>
 
         {% if session.get("role") == "admin" %}
-            <a href="/admin/directors">Direktorlar</a>
-            <a href="/admin/companies">Kompaniyalar</a>
-            <a href="/admin/assign-director">Direktor → Kompaniya</a>
-            <a href="/admin/expenses">Barcha xarajatlar</a>
-            <a href="/expenses">Xarajatlar</a>
-            <a href="/admin/reports">Hisobotlar</a>
-
+            <a href="{{ url_for('admin_companies') }}">Kompaniyalar</a>
+            <a href="{{ url_for('admin_directors') }}">Direktorlar</a>
+            <a href="{{ url_for('admin_expenses') }}">Xarajatlar</a>
+        {% else %}
+            <a href="{{ url_for('expenses') }}">Xarajatlarim</a>
         {% endif %}
     </div>
 
-    <div class="nav-right">
-        <span class="nav-user">👤 {{ session["user"] }}</span>
-        <a href="/logout" class="logout">Logout</a>
+    <div class="navbar-right">
+        <!-- Notification -->
+        <button id="notifBtn" class="icon-btn" title="Bildirishnomalar">🔔</button>
+
+        <!-- Theme -->
+        <button id="themeToggle" class="icon-btn" title="Theme">🌙</button>
+
+        <!-- User -->
+        <span class="user">👤 {{ session['user'] }}</span>
+
+        <!-- Logout -->
+        <a href="{{ url_for('logout') }}" class="logout-btn">Chiqish</a>
     </div>
 </div>
+
+<!-- ===== NOTIFICATION DROPDOWN ===== -->
+<div class="notif-box" id="notifBox">
+    <h4>🔔 Bildirishnomalar</h4>
+
+    <div class="notif-item">💸 Yangi xarajat qo‘shildi</div>
+    <div class="notif-item">🏢 Kompaniya balansi yangilandi</div>
+    <div class="notif-item muted">📭 Hozircha yangi xabar yo‘q</div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+/* ================= THEME ================= */
+const body = document.body;
+const toggle = document.getElementById("themeToggle");
+
+body.classList.add("fade");
+
+const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+const savedTheme = localStorage.getItem("theme");
+
+// LOAD
+if (savedTheme === "dark" || (!savedTheme && systemDark)) {
+    body.classList.add("dark");
+    toggle.textContent = "☀️";
+}
+
+// TOGGLE
+toggle.addEventListener("click", () => {
+    body.classList.add("fade");
+
+    body.classList.toggle("dark");
+    const isDark = body.classList.contains("dark");
+
+    toggle.textContent = isDark ? "☀️" : "🌙";
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+
+    setTimeout(() => body.classList.remove("fade"), 300);
+});
+
+// SYSTEM CHANGE
+window.matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", e => {
+        if (!localStorage.getItem("theme")) {
+            body.classList.toggle("dark", e.matches);
+            toggle.textContent = e.matches ? "☀️" : "🌙";
+        }
+    });
+
+/* ================= NOTIFICATION ================= */
+const notifBtn = document.getElementById("notifBtn");
+const notifBox = document.getElementById("notifBox");
+
+notifBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    notifBox.style.display =
+        notifBox.style.display === "block" ? "none" : "block";
+});
+
+document.addEventListener("click", () => {
+    notifBox.style.display = "none";
+});
+</script>
