@@ -1,13 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import sqlite3
 from datetime import datetime, timedelta
+import requests
+
 
 
 app = Flask(__name__)
 app.secret_key = "VERY_SECRET_KEY_123456"
 
+TELEGRAM_TOKEN = "8588085417:AAG1_uFr9irp7-E2fGd20jg0BbxxUopSsH4"
+TELEGRAM_CHAT_ID = "5703562662"
 
 
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML"
+    }
+    try:
+        requests.post(url, data=payload, timeout=5)
+    except Exception as e:
+        print("Telegram xato:", e)
 # ================= DATABASE =================
 def init_db():
     conn = sqlite3.connect("users.db")
@@ -379,22 +394,21 @@ def expenses():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    # 🔐 Faqat director kiradi
+    # 🔐 Faqat director
     if session.get("role") != "director":
         return redirect(url_for("dashboard"))
 
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
-    # 🏢 Director kompaniyasini olish
+    # 🏢 Director kompaniyasi
     c.execute(
-        "SELECT company_id FROM users WHERE username=?",
+        "SELECT id, company_id FROM users WHERE username=?",
         (session["user"],)
     )
-    row = c.fetchone()
+    user_row = c.fetchone()
 
-    # ❌ Agar kompaniya yo‘q bo‘lsa
-    if not row or row[0] is None:
+    if not user_row or user_row[1] is None:
         conn.close()
         return render_template(
             "expenses.html",
@@ -403,21 +417,22 @@ def expenses():
             error="Siz kompaniyaga biriktirilmagansiz ❌"
         )
 
-    company_id = row[0]
+    user_id = user_row[0]
+    company_id = user_row[1]
 
     # ================= POST: XARAJAT QO‘SHISH =================
     if request.method == "POST":
         amount = int(request.form["amount"])
         description = request.form["description"]
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         # 💰 Balansni olish
         c.execute(
-            "SELECT balance FROM companies WHERE id=?",
+            "SELECT balance, name FROM companies WHERE id=?",
             (company_id,)
         )
-        balance = c.fetchone()[0]
+        balance, company_name = c.fetchone()
 
-        # ❌ Manfiy yoki 0 summa
         if amount <= 0:
             conn.close()
             return render_template(
@@ -427,7 +442,6 @@ def expenses():
                 error="Xarajat summasi noto‘g‘ri ❌"
             )
 
-        # ❌ Balans yetarli emas
         if amount > balance:
             conn.close()
             return render_template(
@@ -437,16 +451,11 @@ def expenses():
                 error="Balans yetarli emas ❌"
             )
 
-        # ✅ Xarajat qo‘shish
+        # ✅ Xarajatni DB ga yozish
         c.execute("""
-            INSERT INTO expenses (company_id, amount, description, created_at)
-            VALUES (?, ?, ?, ?)
-        """, (
-            company_id,
-            amount,
-            description,
-            datetime.now().strftime("%Y-%m-%d %H:%M")
-        ))
+            INSERT INTO expenses (company_id, user_id, amount, description, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (company_id, user_id, amount, description, created_at))
 
         # ➖ Balansni kamaytirish
         c.execute(
@@ -456,13 +465,17 @@ def expenses():
 
         conn.commit()
 
-        # 🔔 ===== NOTIFICATION (ASOSIY QO‘SHILGAN JOY) =====
-        session["last_expense"] = {
-            "message": f"💸 {amount} so‘m xarajat qo‘shildi",
-            "time": datetime.now().strftime("%H:%M")
-        }
+        # 🔔 TELEGRAM XABAR (TO‘G‘RI JOY)
+        message = f"""
+<b>💸 Yangi xarajat</b>
+🏢 Kompaniya: <b>{company_name}</b>
+👔 Direktor: <b>{session['user']}</b>
+💰 Summa: <b>{amount:,} so‘m</b>
+📝 Izoh: {description}
+🕒 Sana: {created_at}
+"""
+        send_telegram_message(message)
 
-        # 🔁 POST → REDIRECT (refresh muammosi bo‘lmasin)
         conn.close()
         return redirect(url_for("expenses"))
 
@@ -475,7 +488,6 @@ def expenses():
     """, (company_id,))
     expenses = c.fetchall()
 
-    # 💰 Balansni qayta olish
     c.execute(
         "SELECT balance FROM companies WHERE id=?",
         (company_id,)
@@ -490,6 +502,7 @@ def expenses():
         balance=balance,
         error=None
     )
+
 
 
 

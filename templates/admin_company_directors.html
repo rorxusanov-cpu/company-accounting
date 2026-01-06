@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Kompaniya direktorlari</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "navbar.html" %}
+
+<div class="login-box">
+    <h2>🏢 Kompaniya direktorlari</h2>
+
+    {% if directors %}
+    <table border="1" width="100%" cellpadding="6">
+        <tr>
+            <th>ID</th>
+            <th>Login</th>
+            <th>Role</th>
+            <th>Sana</th>
+        </tr>
+
+        {% for d in directors %}
+        <tr>
+            <td>{{ d[0] }}</td>
+            <td>{{ d[1] }}</td>
+            <td>{{ d[2] }}</td>
+            <td>{{ d[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+        <p>Bu kompaniyaga direktor biriktirilmagan</p>
+    {% endif %}
+</div>
+
+</body>
+</html>
