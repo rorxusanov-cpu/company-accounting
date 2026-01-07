@@ -6,7 +6,7 @@ import requests
 
 
 app = Flask(__name__)
-app.secret_key = "VERY_SECRET_KEY_123456"
+app.secret_key = "1d0e8959851c08813b5862b3462e08a6"
 
 TELEGRAM_TOKEN = "8588085417:AAG1_uFr9irp7-E2fGd20jg0BbxxUopSsH4"
 TELEGRAM_CHAT_ID = "5703562662"
@@ -928,4 +928,5 @@ def clear_notification():
 # ================= RUN =================
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run()
+
