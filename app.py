@@ -1275,7 +1275,9 @@ def export_director_expenses():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={fname}"})
 
-
+@app.route('/ping')
+def ping():
+    return 'pong', 200
 # ================= RUN =================
 if __name__ == "__main__":
     init_db()
