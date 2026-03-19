@@ -495,6 +495,14 @@
         {% endif %}
     </div>
 
+    <!-- EXPORT -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+        <a href="{{ url_for('export_director_expenses') }}"
+           style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,#16a34a,#15803d);color:white;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 4px 14px rgba(22,163,74,0.3);">
+            📥 CSV yuklab olish
+        </a>
+    </div>
+
     <!-- FILTER -->
     <div class="card">
         <div class="card-title">🔍 Filter</div>

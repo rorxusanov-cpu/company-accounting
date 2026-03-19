@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, Response
+import io
 import sqlite3
 from datetime import datetime, timedelta
 import requests
@@ -693,10 +694,30 @@ def admin_company_detail(company_id):
         params.extend([from_date, to_date])
 
     query += " ORDER BY e.created_at DESC"
-
     c.execute(query, params)
     expense_list = c.fetchall()
 
+    # Oxirgi 7 kunlik grafik
+    chart_labels = []
+    chart_values = []
+    for i in range(6, -1, -1):
+        day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        c.execute(
+            "SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND date(created_at)=?",
+            (company_id, day)
+        )
+        chart_labels.append(day[-5:])
+        chart_values.append(c.fetchone()[0])
+
+    # Oylik xarajatlar (oxirgi 6 oy)
+    c.execute("""
+        SELECT strftime('%Y-%m', created_at) as month, IFNULL(SUM(amount),0)
+        FROM expenses WHERE company_id=?
+        GROUP BY month ORDER BY month DESC LIMIT 6
+    """, (company_id,))
+    monthly = c.fetchall()
+
+    # Balans to'ldirish uchun POST
     conn.close()
 
     return render_template(
@@ -704,7 +725,10 @@ def admin_company_detail(company_id):
         company=company,
         total_expenses=total_expenses,
         directors=directors,
-        expenses=expense_list
+        expenses=expense_list,
+        chart_labels=chart_labels,
+        chart_values=chart_values,
+        monthly=monthly
     )
 
 
@@ -834,19 +858,72 @@ def admin_reports():
     conn = get_db()
     c = conn.cursor()
 
+    # Kompaniyalar bo'yicha jami xarajat
     c.execute("""
         SELECT c.name, IFNULL(SUM(e.amount),0)
         FROM companies c
         LEFT JOIN expenses e ON e.company_id=c.id
-        GROUP BY c.name
+        GROUP BY c.name ORDER BY 2 DESC
     """)
-    data = c.fetchall()
+    company_data = c.fetchall()
+
+    # Umumiy statistika
+    c.execute("SELECT IFNULL(SUM(balance),0) FROM companies")
+    total_balance = c.fetchone()[0]
+
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses")
+    total_expenses = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM companies")
+    total_companies = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM users WHERE role='director'")
+    total_directors = c.fetchone()[0]
+
+    # Oxirgi 12 oylik trend
+    c.execute("""
+        SELECT strftime('%Y-%m', created_at) as month, IFNULL(SUM(amount),0)
+        FROM expenses
+        GROUP BY month ORDER BY month DESC LIMIT 12
+    """)
+    monthly_raw = c.fetchall()
+    monthly_data = list(reversed(monthly_raw))
+
+    # Eng ko'p xarajat qilgan top 5 direktor
+    c.execute("""
+        SELECT u.username, c.name, IFNULL(SUM(e.amount),0) as total
+        FROM users u
+        LEFT JOIN expenses e ON e.user_id = u.id
+        LEFT JOIN companies c ON u.company_id = c.id
+        WHERE u.role='director'
+        GROUP BY u.id ORDER BY total DESC LIMIT 5
+    """)
+    top_directors = c.fetchall()
+
+    # Haftalik xarajat (oxirgi 7 kun)
+    weekly_labels = []
+    weekly_values = []
+    for i in range(6, -1, -1):
+        day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE date(created_at)=?", (day,))
+        weekly_labels.append(day[-5:])
+        weekly_values.append(c.fetchone()[0])
+
     conn.close()
 
     return render_template(
         "admin_reports.html",
-        labels=[row[0] for row in data],
-        values=[row[1] for row in data]
+        labels=[row[0] for row in company_data],
+        values=[row[1] for row in company_data],
+        total_balance=total_balance,
+        total_expenses=total_expenses,
+        total_companies=total_companies,
+        total_directors=total_directors,
+        monthly_labels=[row[0] for row in monthly_data],
+        monthly_values=[row[1] for row in monthly_data],
+        top_directors=top_directors,
+        weekly_labels=weekly_labels,
+        weekly_values=weekly_values,
     )
 
 
@@ -929,6 +1006,273 @@ def inject_notifications():
         "notifications": [],
         "last_expense": session.get("last_expense")
     }
+
+
+
+
+
+# ================= EXCEL EXPORT =================
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, Reference
+from openpyxl.chart.series import DataPoint
+
+def _xl_border():
+    s = Side(style="thin", color="E2E8F0")
+    return Border(left=s, right=s, top=s, bottom=s)
+
+def _xl_cell(cell, bold=False, color="0F172A", bg=None, align="left",
+             size=10, number_fmt=None):
+    cell.font = Font(name="Arial", bold=bold, size=size, color=color)
+    if bg:
+        cell.fill = PatternFill("solid", fgColor=bg)
+    cell.alignment = Alignment(horizontal=align, vertical="center")
+    if number_fmt:
+        cell.number_format = number_fmt
+    cell.border = _xl_border()
+
+def _xl_header(ws, title, subtitle, ncols):
+    ws.merge_cells(f"A1:{get_column_letter(ncols)}1")
+    ws.row_dimensions[1].height = 10
+    ws.merge_cells(f"A2:{get_column_letter(ncols)}2")
+    c = ws["A2"]
+    c.value = title
+    c.font = Font(name="Arial", bold=True, size=18, color="FFFFFF")
+    c.fill = PatternFill("solid", fgColor="0A0F1E")
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    ws.row_dimensions[2].height = 42
+    ws.merge_cells(f"A3:{get_column_letter(ncols)}3")
+    c = ws["A3"]
+    c.value = subtitle
+    c.font = Font(name="Arial", size=10, color="94A3B8")
+    c.fill = PatternFill("solid", fgColor="1E3A5F")
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    ws.row_dimensions[3].height = 22
+    ws.merge_cells(f"A4:{get_column_letter(ncols)}4")
+    ws["A4"].fill = PatternFill("solid", fgColor="0A0F1E")
+    ws.row_dimensions[4].height = 6
+
+def _xl_col_headers(ws, row, headers, bg="3B6EF6"):
+    for i, h in enumerate(headers, 1):
+        c = ws.cell(row=row, column=i, value=h)
+        c.font = Font(name="Arial", bold=True, size=10, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor=bg)
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = _xl_border()
+    ws.row_dimensions[row].height = 26
+
+def _build_xlsx(rows, sheet_title, report_label):
+    """rows: list of (company, director, amount, description, created_at)"""
+    from collections import defaultdict
+    wb = Workbook()
+
+    # ===== SHEET 1: XARAJATLAR =====
+    ws = wb.active
+    ws.title = sheet_title
+    ncols = 5
+    _xl_header(ws, f"💸  {report_label.upper()}",
+               f"Sana: {datetime.now().strftime('%d.%m.%Y %H:%M')}", ncols)
+    widths = [5, 22, 18, 34, 18]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    _xl_col_headers(ws, 5, ["#", "Kompaniya", "Summa (so'm)", "Izoh", "Sana"])
+
+    DS = 6
+    for idx, row in enumerate(rows, 1):
+        r = DS + idx - 1
+        bg = "F0F4FF" if idx % 2 == 0 else "FFFFFF"
+        for col, val in enumerate([idx, row[0], row[2], row[3], row[4]], 1):
+            c = ws.cell(row=r, column=col, value=val)
+            _xl_cell(c, bg=bg, align="center" if col == 1 else "left")
+            if col == 3:
+                _xl_cell(c, bold=True, color="EF4444", bg=bg,
+                         align="right", number_fmt="#,##0")
+            if col == 5:
+                _xl_cell(c, color="64748B", bg=bg)
+        ws.row_dimensions[r].height = 20
+
+    DE = DS + len(rows) - 1
+    if rows:
+        tr = DE + 1
+        ws.merge_cells(f"A{tr}:{get_column_letter(2)}{tr}")
+        c = ws[f"A{tr}"]
+        c.value = "JAMI XARAJAT"
+        _xl_cell(c, bold=True, color="FFFFFF", bg="0A0F1E",
+                 align="center", size=11)
+        tc = ws.cell(row=tr, column=3,
+                     value=f"=SUM(C{DS}:C{DE})")
+        _xl_cell(tc, bold=True, color="00D4AA", bg="0A0F1E",
+                 align="right", size=12, number_fmt="#,##0")
+        for col in [4, 5]:
+            ws.cell(row=tr, column=col).fill = PatternFill("solid", fgColor="0A0F1E")
+            ws.cell(row=tr, column=col).border = _xl_border()
+        ws.row_dimensions[tr].height = 28
+    ws.freeze_panes = "A6"
+
+    # ===== SHEET 2: KOMPANIYALAR YIG'MA =====
+    ws2 = wb.create_sheet("Kompaniyalar")
+    company_totals = defaultdict(int)
+    for row in rows:
+        company_totals[row[0]] += row[2]
+    sorted_companies = sorted(company_totals.items(), key=lambda x: -x[1])
+
+    nc2 = 3
+    _xl_header(ws2, "🏢  KOMPANIYALAR BO'YICHA YIG'MA",
+               f"Sana: {datetime.now().strftime('%d.%m.%Y')}", nc2)
+    for i, w in enumerate([5, 26, 20], 1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+    _xl_col_headers(ws2, 5, ["#", "Kompaniya", "Jami xarajat"], bg="00B894")
+
+    DS2 = 6
+    for idx, (comp, total) in enumerate(sorted_companies, 1):
+        r = DS2 + idx - 1
+        bg = "F0FDF4" if idx % 2 == 0 else "FFFFFF"
+        for col, val in enumerate([idx, comp, total], 1):
+            c = ws2.cell(row=r, column=col, value=val)
+            _xl_cell(c, bg=bg, align="center" if col == 1 else "left")
+            if col == 3:
+                _xl_cell(c, bold=True, color="EF4444", bg=bg,
+                         align="right", number_fmt="#,##0")
+        ws2.row_dimensions[r].height = 20
+
+    DE2 = DS2 + len(sorted_companies) - 1
+    if sorted_companies:
+        tr2 = DE2 + 1
+        ws2[f"A{tr2}"].value = "JAMI"
+        _xl_cell(ws2[f"A{tr2}"], bold=True, color="FFFFFF",
+                 bg="0A0F1E", align="center", size=11)
+        tc2 = ws2.cell(row=tr2, column=3,
+                       value=f"=SUM(C{DS2}:C{DE2})")
+        _xl_cell(tc2, bold=True, color="00D4AA", bg="0A0F1E",
+                 align="right", size=12, number_fmt="#,##0")
+        ws2.cell(row=tr2, column=2).fill = PatternFill("solid", fgColor="0A0F1E")
+        ws2.cell(row=tr2, column=2).border = _xl_border()
+        ws2.row_dimensions[tr2].height = 28
+    ws2.freeze_panes = "A6"
+
+    # ===== SHEET 3: GRAFIK =====
+    ws3 = wb.create_sheet("Grafik")
+    _xl_header(ws3, "📊  GRAFIK TAHLIL",
+               "Kompaniyalar bo'yicha xarajatlar taqqoslash", 4)
+    ws3.column_dimensions["A"].width = 24
+    ws3.column_dimensions["B"].width = 20
+    _xl_col_headers(ws3, 5, ["Kompaniya", "Xarajat (so'm)"])
+    for i, (comp, total) in enumerate(sorted_companies, 6):
+        ws3.cell(row=i, column=1, value=comp).font = Font(name="Arial", size=10)
+        c = ws3.cell(row=i, column=2, value=total)
+        c.number_format = "#,##0"
+        c.font = Font(name="Arial", size=10, color="EF4444", bold=True)
+        ws3.row_dimensions[i].height = 20
+
+    if sorted_companies:
+        chart = BarChart()
+        chart.type = "col"
+        chart.title = "Kompaniyalar bo'yicha xarajatlar"
+        chart.y_axis.title = "So'm"
+        chart.style = 10
+        chart.width = 22
+        chart.height = 14
+        max_row = 5 + len(sorted_companies)
+        data_ref = Reference(ws3, min_col=2, min_row=5, max_row=max_row)
+        cats = Reference(ws3, min_col=1, min_row=6, max_row=max_row)
+        chart.add_data(data_ref, titles_from_data=True)
+        chart.set_categories(cats)
+        palette = ["3B6EF6","00D4AA","F59E0B","EF4444","8B5CF6","06B6D4"]
+        for i in range(len(sorted_companies)):
+            pt = DataPoint(idx=i)
+            pt.graphicalProperties.solidFill = palette[i % len(palette)]
+            chart.series[0].dPt.append(pt)
+        ws3.add_chart(chart, f"A{max_row + 3}")
+
+    return wb
+
+
+@app.route("/admin/export/expenses")
+def export_all_expenses():
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT c.name, u.username, e.amount, e.description, e.created_at
+        FROM expenses e
+        JOIN companies c ON e.company_id = c.id
+        LEFT JOIN users u ON u.id = e.user_id
+        ORDER BY e.created_at DESC
+    """)
+    rows = c.fetchall()
+    conn.close()
+    wb = _build_xlsx(rows, "Xarajatlar", "Barcha xarajatlar hisoboti")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"xarajatlar_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    return Response(buf.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@app.route("/admin/export/company/<int:company_id>")
+def export_company_expenses(company_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+    company = c.fetchone()
+    if not company:
+        conn.close()
+        return "Kompaniya topilmadi ❌"
+    c.execute("""
+        SELECT c.name, u.username, e.amount, e.description, e.created_at
+        FROM expenses e
+        JOIN companies c ON e.company_id = c.id
+        LEFT JOIN users u ON u.id = e.user_id
+        WHERE e.company_id = ?
+        ORDER BY e.created_at DESC
+    """, (company_id,))
+    rows = c.fetchall()
+    conn.close()
+    wb = _build_xlsx(rows, "Xarajatlar", f"{company['name']} xarajatlari")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"{company['name']}_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    return Response(buf.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@app.route("/director/export/expenses")
+def export_director_expenses():
+    if "user" not in session or session.get("role") != "director":
+        return redirect(url_for("login"))
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, company_id FROM users WHERE username=?", (session["user"],))
+    user_row = c.fetchone()
+    if not user_row or not user_row["company_id"]:
+        conn.close()
+        return "Kompaniyaga biriktirilmagansiz ❌"
+    c.execute("""
+        SELECT c.name, u.username, e.amount, e.description, e.created_at
+        FROM expenses e
+        JOIN companies c ON e.company_id = c.id
+        JOIN users u ON u.id = e.user_id
+        WHERE e.company_id = ? AND e.user_id = ?
+        ORDER BY e.created_at DESC
+    """, (user_row["company_id"], user_row["id"]))
+    rows = c.fetchall()
+    conn.close()
+    wb = _build_xlsx(rows, "Xarajatlarim", f"{session['user']} xarajatlari")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"{session['user']}_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    return Response(buf.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 # ================= RUN =================

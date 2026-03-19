@@ -364,9 +364,15 @@
     <div class="table-card">
         <div class="table-header">
             <div class="table-title">📄 Xarajatlar ro'yxati</div>
-            <div style="display:flex;gap:10px;align-items:center;">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <input type="text" class="search-input" id="searchInput" placeholder="🔍 Qidirish...">
                 <div class="count-badge">{{ expenses | length }} ta</div>
+                <a href="{{ url_for('export_all_expenses') }}"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:linear-gradient(135deg,#16a34a,#15803d);color:white;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:transform 0.15s;"
+                   onmouseover="this.style.transform='translateY(-1px)'"
+                   onmouseout="this.style.transform='translateY(0)'">
+                    📥 CSV yuklab olish
+                </a>
             </div>
         </div>
 
