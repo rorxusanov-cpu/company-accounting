@@ -1,4 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, Response
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, Reference
+from openpyxl.chart.series import DataPoint
 import io
 import sqlite3
 from datetime import datetime, timedelta
@@ -1012,11 +1017,7 @@ def inject_notifications():
 
 
 # ================= EXCEL EXPORT =================
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.chart import BarChart, Reference
-from openpyxl.chart.series import DataPoint
+
 
 def _xl_border():
     s = Side(style="thin", color="E2E8F0")
@@ -1279,3 +1280,4 @@ def export_director_expenses():
 if __name__ == "__main__":
     init_db()
     app.run(debug=False)
+    
