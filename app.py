@@ -1326,6 +1326,7 @@ def company_balances():
     return jsonify(rows)
 
 # ================= RUN =================
+init_db()  # Gunicorn va oddiy run ikkalasida ham ishlaydi
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=False)
