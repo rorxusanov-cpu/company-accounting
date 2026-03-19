@@ -2,28 +2,378 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <title>Barcha xarajatlar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xarajatlar | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        :root {
+            --bg: #f0f2f8;
+            --sidebar-bg: #0a0f1e;
+            --sidebar-w: 240px;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #3b6ef6;
+            --accent2: #00d4aa;
+            --danger: #ef4444;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        .sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); min-height: 100vh; display: flex; flex-direction: column; padding: 28px 16px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+        .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 36px; }
+        .sidebar-logo .icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .sidebar-logo .brand { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: white; line-height: 1.3; }
+        .sidebar-logo .brand span { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.35); font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; }
+        .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.25); padding: 0 12px; margin: 20px 0 8px; }
+        .sidebar a { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 10px; color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s; margin-bottom: 2px; }
+        .sidebar a:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+        .sidebar a.active { background: linear-gradient(135deg, rgba(59,110,246,0.25), rgba(0,212,170,0.15)); color: white; border-left: 2px solid var(--accent2); }
+        .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+        .user-badge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); }
+        .user-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .user-info .name { font-size: 13px; font-weight: 600; color: white; }
+        .user-info .role { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+        .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+        .page-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+        .page-title span { display: block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+        /* SUMMARY CARDS */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+        }
+
+        .summary-card::after {
+            content: attr(data-icon);
+            position: absolute;
+            right: 16px; bottom: 10px;
+            font-size: 48px; opacity: 0.07;
+        }
+
+        .summary-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+        .summary-val { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--text); }
+
+        /* FILTER CARD */
+        .filter-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .filter-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px; font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .filter-grid {
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: end;
+        }
+
+        .filter-field { display: flex; flex-direction: column; gap: 5px; }
+        .filter-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 500; }
+
+        .filter-field input {
+            padding: 9px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px; font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text); outline: none;
+            background: var(--bg); transition: border-color 0.2s;
+        }
+
+        .filter-field input:focus { border-color: var(--accent); background: white; }
+
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+        .btn-filter {
+            padding: 9px 18px;
+            background: var(--accent); color: white;
+            border: none; border-radius: 9px;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s;
+        }
+
+        .btn-filter:hover { background: #2554d8; }
+
+        .btn-clear {
+            padding: 9px 14px;
+            background: var(--bg); color: var(--muted);
+            border: 1.5px solid var(--border); border-radius: 9px;
+            font-size: 13px; font-weight: 500;
+            text-decoration: none; transition: all 0.2s;
+        }
+
+        .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* TABLE CARD */
+        .table-card {
+            background: var(--card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .table-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+
+        .count-badge {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 5px 12px;
+            font-size: 13px; color: var(--muted);
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            padding: 11px 20px;
+            text-align: left; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            color: var(--muted); font-weight: 600;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td {
+            padding: 14px 20px; font-size: 14px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #fafbff; }
+
+        .company-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #eff6ff; color: #1d4ed8;
+            border-radius: 6px; padding: 4px 10px;
+            font-size: 13px; font-weight: 500;
+        }
+
+        .amount-cell {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px; font-weight: 700;
+            color: var(--danger);
+        }
+
+        .desc-cell { color: var(--text); max-width: 260px; }
+        .date-cell { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+        .empty-row td {
+            text-align: center; padding: 70px;
+            color: var(--muted); font-size: 15px;
+        }
+
+        /* Search input in header */
+        .search-input {
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px; font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text); outline: none;
+            background: var(--bg); width: 220px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus { border-color: var(--accent); background: white; }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .main { margin-left: 0; padding: 20px; }
+            .summary-row { grid-template-columns: 1fr; }
+        }
+
+
+        /* Jadval scroll */
+        .table-card, .card { overflow-x: auto; }
+        table { min-width: 500px; }
+        @media (max-width: 480px) {
+            .stats, .stats-row, .summary-row { grid-template-columns: 1fr 1fr !important; }
+            .top-row, .bottom-grid, .actions-grid { grid-template-columns: 1fr !important; }
+            .hero-name { font-size: 18px; }
+            .balance-value, .total-val { font-size: 28px !important; }
+        }
+
+        /* ===== MOBILE ===== */
+        .hamburger {
+            display: none;
+            position: fixed;
+            top: 16px; left: 16px;
+            z-index: 200;
+            width: 44px; height: 44px;
+            background: #0a0f1e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 5px;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 20px; height: 2px;
+            background: white; border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+                z-index: 150;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
+        }
+    </style>
 </head>
 <body>
 
-{% include "navbar.html" %}
 
-<div class="login-box" style="width:95%; max-width:1200px;">
-    <h2>👑 Barcha xarajatlar</h2>
+<div class="hamburger" id="hamburger" onclick="toggleSidebar()">
+    <span></span><span></span><span></span>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-    <!-- ACTION BUTTONS -->
-    <div style="margin-bottom:15px;">
-        <a href="/admin/export/expenses">📄 Excel (CSV)</a> |
-        <a href="/admin/export/expenses/pdf">📄 PDF</a> |
-        <a href="/admin/expenses/filter">📆 Sana bo‘yicha filter</a>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <div class="nav-section">Boshqaruv</div>
+    <a href="{{ url_for('admin_companies') }}">🏢 Kompaniyalar</a>
+    <a href="{{ url_for('admin_directors') }}">👔 Direktorlar</a>
+    <a href="{{ url_for('admin_expenses') }}" class="active">💸 Xarajatlar</a>
+    <a href="{{ url_for('admin_balances') }}">💰 Balans</a>
+    <a href="{{ url_for('admin_reports') }}">📈 Hisobotlar</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Admin</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+
+    <div class="topbar">
+        <div class="page-title">
+            Barcha xarajatlar
+            <span>Kompaniyalar bo'yicha xarajatlar tarixi</span>
+        </div>
     </div>
 
-    {% if expenses %}
-        <table border="1" width="100%" cellpadding="6">
+    <!-- SUMMARY -->
+    <div class="summary-row">
+        <div class="summary-card" data-icon="💸">
+            <div class="summary-label">Jami xarajat</div>
+            <div class="summary-val">
+                {% set total = namespace(val=0) %}
+                {% for e in expenses %}{% set total.val = total.val + e.amount %}{% endfor %}
+                {{ "{:,}".format(total.val) }} so'm
+            </div>
+        </div>
+        <div class="summary-card" data-icon="📋">
+            <div class="summary-label">Tranzaksiyalar soni</div>
+            <div class="summary-val">{{ expenses | length }} ta</div>
+        </div>
+        <div class="summary-card" data-icon="📊">
+            <div class="summary-label">O'rtacha xarajat</div>
+            <div class="summary-val">
+                {% if expenses | length > 0 %}
+                    {{ "{:,}".format((total.val // (expenses | length))) }} so'm
+                {% else %}
+                    0 so'm
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER -->
+    <div class="filter-card">
+        <div class="filter-title">🔍 Filter</div>
+        <form method="GET" class="filter-grid">
+            <div class="filter-field">
+                <label>Kun</label>
+                <input type="date" name="day" value="{{ request.args.get('day','') }}">
+            </div>
+            <div class="filter-field">
+                <label>Oy</label>
+                <input type="month" name="month" value="{{ request.args.get('month','') }}">
+            </div>
+            <div class="filter-field">
+                <label>Dan</label>
+                <input type="date" name="from" value="{{ request.args.get('from','') }}">
+            </div>
+            <div class="filter-field">
+                <label>Gacha</label>
+                <input type="date" name="to" value="{{ request.args.get('to','') }}">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn-filter">Filter →</button>
+                <a href="{{ url_for('admin_expenses') }}" class="btn-clear">♻️ Tozalash</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title">📄 Xarajatlar ro'yxati</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <input type="text" class="search-input" id="searchInput" placeholder="🔍 Qidirish...">
+                <div class="count-badge">{{ expenses | length }} ta</div>
+            </div>
+        </div>
+
+        <table id="expTable">
             <thead>
                 <tr>
+                    <th>#</th>
                     <th>Kompaniya</th>
                     <th>Summa</th>
                     <th>Izoh</th>
@@ -31,20 +381,47 @@
                 </tr>
             </thead>
             <tbody>
-                {% for e in expenses %}
-                <tr>
-                    <td>{{ e[0] }}</td>
-                    <td>{{ "{:,}".format(e[1]) }} so‘m</td>
-                    <td>{{ e[2] }}</td>
-                    <td>{{ e[3] }}</td>
-                </tr>
-                {% endfor %}
+                {% if expenses %}
+                    {% for e in expenses %}
+                    <tr>
+                        <td style="color:var(--muted);font-size:13px;">{{ loop.index }}</td>
+                        <td><span class="company-chip">🏢 {{ e.company }}</span></td>
+                        <td><span class="amount-cell">-{{ "{:,}".format(e.amount) }}</span></td>
+                        <td class="desc-cell">{{ e.description }}</td>
+                        <td class="date-cell">{{ e.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-row">
+                        <td colspan="5">📭 Hozircha xarajatlar yo'q</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
-    {% else %}
-        <p>Hozircha xarajatlar yo‘q.</p>
-    {% endif %}
-</div>
+    </div>
+
+</main>
+
+<script>
+document.getElementById('searchInput').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#expTable tbody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+</script>
+
+
+<script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
+</script>
 
 </body>
 </html>

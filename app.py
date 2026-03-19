@@ -8,7 +8,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
 # ================= CONFIG =================
-# .env faylidan o'qiladi, aks holda default qiymat
 app.secret_key = os.environ.get("SECRET_KEY", "o'zgartiring-bu-qiymatni")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8588085417:AAG1_uFr9irp7-E2fGd20jg0BbxxUopSsH4")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "5703562662")
@@ -17,6 +16,7 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "5703562662")
 # ================= TELEGRAM =================
 def send_telegram_message(text):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram token yoki chat_id yo'q!")
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
@@ -25,7 +25,9 @@ def send_telegram_message(text):
         "parse_mode": "HTML"
     }
     try:
-        requests.post(url, data=payload, timeout=5)
+        response = requests.post(url, data=payload, timeout=5)
+        if not response.json().get("ok"):
+            print("Telegram xato javobi:", response.text)
     except Exception as e:
         print("Telegram xato:", e)
 
@@ -560,21 +562,34 @@ def admin_director_detail(director_id):
 
     company_balance = 0
     total_expenses = 0
+    recent_expenses = []
+    chart_labels = []
+    chart_values = []
 
     if director["company_id_val"]:
-        c.execute(
-            "SELECT balance FROM companies WHERE id=?",
-            (director["company_id_val"],)
-        )
+        c.execute("SELECT balance FROM companies WHERE id=?", (director["company_id_val"],))
         row = c.fetchone()
         if row:
             company_balance = row["balance"]
 
-        c.execute(
-            "SELECT IFNULL(SUM(amount), 0) FROM expenses WHERE company_id=?",
-            (director["company_id_val"],)
-        )
+        c.execute("SELECT IFNULL(SUM(amount), 0) FROM expenses WHERE company_id=?", (director["company_id_val"],))
         total_expenses = c.fetchone()[0]
+
+        # Oxirgi 10 ta xarajat
+        c.execute("""
+            SELECT amount, description, created_at
+            FROM expenses WHERE company_id=?
+            ORDER BY id DESC LIMIT 10
+        """, (director["company_id_val"],))
+        recent_expenses = c.fetchall()
+
+        # Oxirgi 7 kunlik grafik
+        for i in range(6, -1, -1):
+            day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND date(created_at)=?",
+                      (director["company_id_val"], day))
+            chart_labels.append(day[-5:])
+            chart_values.append(c.fetchone()[0])
 
     conn.close()
 
@@ -583,7 +598,10 @@ def admin_director_detail(director_id):
         director=director,
         companies=companies,
         company_balance=company_balance,
-        total_expenses=total_expenses
+        total_expenses=total_expenses,
+        recent_expenses=recent_expenses,
+        chart_labels=chart_labels,
+        chart_values=chart_values
     )
 
 

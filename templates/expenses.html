@@ -2,171 +2,505 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <title>Xarajatlar</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xarajatlar | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        .container {
-            max-width: 900px;
-            margin: 40px auto;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f0f2f8;
+            --sidebar-bg: #0a0f1e;
+            --sidebar-w: 240px;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #3b6ef6;
+            --accent2: #00d4aa;
+            --danger: #ef4444;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
         }
 
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--sidebar-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 28px 16px;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 8px;
+            margin-bottom: 36px;
+        }
+
+        .sidebar-logo .icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+
+        .sidebar-logo .brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px; font-weight: 700;
+            color: white; line-height: 1.3;
+        }
+
+        .sidebar-logo .brand span {
+            display: block;
+            font-size: 10px; font-weight: 400;
+            color: rgba(255,255,255,0.35);
+            font-family: 'DM Sans', sans-serif;
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+
+        .nav-section {
+            font-size: 10px; text-transform: uppercase;
+            letter-spacing: 0.1em; color: rgba(255,255,255,0.25);
+            padding: 0 12px; margin: 20px 0 8px;
+        }
+
+        .sidebar a {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 12px; border-radius: 10px;
+            color: rgba(255,255,255,0.5); text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all 0.2s; margin-bottom: 2px;
+        }
+
+        .sidebar a:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+        .sidebar a.active {
+            background: linear-gradient(135deg, rgba(59,110,246,0.25), rgba(0,212,170,0.15));
+            color: white; border-left: 2px solid var(--accent2);
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 16px;
+        }
+
+        .user-badge {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .user-avatar {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+
+        .user-info .name { font-size: 13px; font-weight: 600; color: white; }
+        .user-info .role { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+        /* ===== MAIN ===== */
+        .main {
+            margin-left: var(--sidebar-w);
+            flex: 1; padding: 32px;
+        }
+
+        .topbar {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px; font-weight: 800;
+        }
+
+        .page-title span {
+            display: block;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px; font-weight: 400;
+            color: var(--muted); margin-top: 2px;
+        }
+
+        /* ===== BALANCE CARD ===== */
+        .balance-card {
+            background: linear-gradient(135deg, #0a0f1e, #1e2a45);
+            border-radius: 20px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(59,110,246,0.3), transparent);
+            top: -100px; right: -50px;
+            border-radius: 50%;
+        }
+
+        .balance-card::after {
+            content: '';
+            position: absolute;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(0,212,170,0.2), transparent);
+            bottom: -60px; left: 40%;
+            border-radius: 50%;
+        }
+
+        .balance-left { position: relative; z-index: 1; }
+
+        .balance-label {
+            font-size: 12px; text-transform: uppercase;
+            letter-spacing: 0.1em; color: rgba(255,255,255,0.4);
+            margin-bottom: 10px;
+        }
+
+        .balance-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 40px; font-weight: 800;
+            color: white; line-height: 1;
+        }
+
+        .balance-value sup {
+            font-size: 18px; font-weight: 600;
+            vertical-align: super; margin-right: 4px;
+            opacity: 0.6;
+        }
+
+        .balance-sub {
+            font-size: 13px; color: rgba(255,255,255,0.4);
+            margin-top: 8px;
+        }
+
+        .balance-icon {
+            font-size: 60px; opacity: 0.15;
+            position: relative; z-index: 1;
+        }
+
+        /* ===== ERROR ===== */
+        .error-box {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: var(--danger);
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        /* ===== CARDS ===== */
         .card {
-            background: white;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 10px 25px rgba(0,0,0,.08);
+            background: var(--card);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
             margin-bottom: 24px;
         }
 
-        .error {
-            background:#fee2e2;
-            color:#b91c1c;
-            padding:12px;
-            border-radius:10px;
-            margin-bottom:15px;
-            font-weight:600;
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 16px; font-weight: 700;
+            margin-bottom: 18px;
+            display: flex; align-items: center; gap: 8px;
         }
 
-        .balance-box {
-            background: linear-gradient(135deg,#06b6d4,#3b82f6);
-            color:white;
-            padding:20px;
-            border-radius:14px;
-            font-size:18px;
-        }
-
-        .balance-box strong {
-            font-size:30px;
-            display:block;
-            margin-top:5px;
-        }
-
+        /* ===== ADD FORM ===== */
         .expense-form {
-            display:flex;
-            gap:12px;
-            flex-wrap:wrap;
+            display: grid;
+            grid-template-columns: 1fr 2fr auto;
+            gap: 12px;
+            align-items: end;
         }
 
-        .expense-form input {
-            flex:1;
-            padding:10px;
-            border-radius:8px;
-            border:1px solid #ddd;
+        .field label {
+            display: block;
+            font-size: 11px; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--muted);
+            font-weight: 500; margin-bottom: 7px;
         }
 
-        .expense-form button {
-            background:#4f46e5;
-            color:white;
-            border:none;
-            padding:10px 18px;
-            border-radius:8px;
-            cursor:pointer;
+        .field input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px; font-family: 'DM Sans', sans-serif;
+            color: var(--text); outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--bg);
         }
 
-        .filter-bar {
-            display:flex;
-            gap:12px;
-            align-items:center;
-            flex-wrap:wrap;
+        .field input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59,110,246,0.08);
+            background: white;
         }
 
-        .filter-bar input {
-            padding:8px;
-            border-radius:8px;
-            border:1px solid #ddd;
+        .btn-add {
+            padding: 12px 22px;
+            background: linear-gradient(135deg, var(--accent), #5b21b6);
+            color: white; border: none; border-radius: 10px;
+            font-family: 'Syne', sans-serif;
+            font-size: 14px; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
 
-        .filter-bar button {
-            background:#2563eb;
-            color:white;
-            border:none;
-            padding:8px 14px;
-            border-radius:8px;
-            cursor:pointer;
+        .btn-add:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59,110,246,0.35);
         }
 
-        .filter-bar a {
-            text-decoration:none;
-            color:#2563eb;
-            font-weight:500;
+        /* ===== FILTER ===== */
+        .filter-row {
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
         }
 
-        .expenses-list {
-            list-style:none;
-            padding:0;
-            margin:0;
+        .filter-row input {
+            padding: 9px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px; font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text); outline: none;
+            background: var(--bg);
+            transition: border-color 0.2s;
         }
 
-        .expenses-list li {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            padding:14px;
-            border-bottom:1px solid #eee;
+        .filter-row input:focus { border-color: var(--accent); }
+
+        .filter-row button {
+            padding: 9px 16px;
+            background: var(--text); color: white;
+            border: none; border-radius: 8px;
+            font-size: 13px; cursor: pointer;
+            font-family: 'DM Sans', sans-serif; font-weight: 500;
         }
 
-        .expenses-list li:last-child {
-            border-bottom:none;
+        .filter-row a {
+            font-size: 13px; color: var(--muted);
+            text-decoration: none; padding: 9px 12px;
         }
 
-        .amount {
-            font-weight:700;
+        .filter-row a:hover { color: var(--accent); }
+
+        /* ===== EXPENSES LIST ===== */
+        .expense-item {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
         }
 
-        .date {
-            color:#6b7280;
-            font-size:13px;
+        .expense-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .expense-item:first-child { padding-top: 0; }
+
+        .expense-left { display: flex; align-items: center; gap: 14px; }
+
+        .expense-dot {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.06));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+
+        .expense-desc { font-size: 14px; font-weight: 500; color: var(--text); }
+        .expense-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        .expense-amount {
+            font-family: 'Syne', sans-serif;
+            font-size: 16px; font-weight: 700;
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center; padding: 50px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .main { margin-left: 0; padding: 20px; }
+            .expense-form { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            .balance-value { font-size: 28px; }
+            .balance-icon { display: none; }
+        }
+
+
+        /* Jadval scroll */
+        .table-card, .card { overflow-x: auto; }
+        table { min-width: 500px; }
+        @media (max-width: 480px) {
+            .stats, .stats-row, .summary-row { grid-template-columns: 1fr 1fr !important; }
+            .top-row, .bottom-grid, .actions-grid { grid-template-columns: 1fr !important; }
+            .hero-name { font-size: 18px; }
+            .balance-value, .total-val { font-size: 28px !important; }
+        }
+
+        /* ===== MOBILE ===== */
+        .hamburger {
+            display: none;
+            position: fixed;
+            top: 16px; left: 16px;
+            z-index: 200;
+            width: 44px; height: 44px;
+            background: #0a0f1e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 5px;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 20px; height: 2px;
+            background: white; border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+                z-index: 150;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
     </style>
 </head>
 <body>
 
-{% include "navbar.html" %}
+<!-- ===== SIDEBAR ===== -->
 
-<div class="container">
+<div class="hamburger" id="hamburger" onclick="toggleSidebar()">
+    <span></span><span></span><span></span>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-    <h2>💸 Xarajatlar</h2>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('expenses') }}" class="active">💸 Xarajatlarim</a>
+
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+    <div class="topbar">
+        <div class="page-title">
+            Xarajatlar
+            <span>Kompaniya xarajatlarini boshqarish</span>
+        </div>
+    </div>
 
     {% if error %}
-        <div class="error">{{ error }}</div>
+    <div class="error-box">⚠️ {{ error }}</div>
     {% endif %}
 
     <!-- BALANCE -->
-    <div class="card balance-box">
-        Joriy balans
-        <strong>{{ balance }} so‘m</strong>
+    <div class="balance-card">
+        <div class="balance-left">
+            <div class="balance-label">Joriy balans</div>
+            <div class="balance-value">
+                <sup>so'm</sup>{{ "{:,}".format(balance) }}
+            </div>
+            <div class="balance-sub">Mavjud mablag'</div>
+        </div>
+        <div class="balance-icon">💳</div>
     </div>
 
     <!-- ADD EXPENSE -->
     <div class="card">
-        <h3>➕ Xarajat qo‘shish</h3>
+        <div class="card-title">➕ Xarajat qo'shish</div>
 
         {% if balance > 0 %}
         <form method="POST" class="expense-form">
-            <input type="number" name="amount" placeholder="Summa" required min="1">
-            <input type="text" name="description" placeholder="Izoh" required>
-            <button type="submit">Qo‘shish</button>
+            <div class="field">
+                <label>Summa (so'm)</label>
+                <input type="number" name="amount" placeholder="0" required min="1" max="{{ balance }}">
+            </div>
+            <div class="field">
+                <label>Izoh</label>
+                <input type="text" name="description" placeholder="Xarajat maqsadi..." required>
+            </div>
+            <button type="submit" class="btn-add">Qo'shish →</button>
         </form>
         {% else %}
-            <p style="color:#b91c1c;font-weight:600;">
-                ❌ Balans 0. Xarajat qo‘sha olmaysiz.
-            </p>
+        <p style="color:var(--danger);font-weight:600;font-size:14px;">
+            ❌ Balans 0. Xarajat qo'sha olmaysiz.
+        </p>
         {% endif %}
     </div>
 
     <!-- FILTER -->
     <div class="card">
-        <h3>🔍 Filter</h3>
-
-        <form method="GET" class="filter-bar">
-            <label>📅 Kun</label>
-            <input type="date" name="day" value="{{ request.args.get('day','') }}">
-
-            <label>📆 Oy</label>
-            <input type="month" name="month" value="{{ request.args.get('month','') }}">
-
+        <div class="card-title">🔍 Filter</div>
+        <form method="GET" class="filter-row">
+            <input type="date" name="day" value="{{ request.args.get('day','') }}" title="Kun bo'yicha">
+            <input type="month" name="month" value="{{ request.args.get('month','') }}" title="Oy bo'yicha">
             <button type="submit">Filter</button>
             <a href="{{ url_for('expenses') }}">♻️ Tozalash</a>
         </form>
@@ -174,26 +508,42 @@
 
     <!-- EXPENSES -->
     <div class="card">
-        <h3>📄 Mening xarajatlarim</h3>
+        <div class="card-title">📄 Xarajatlar tarixi</div>
 
         {% if expenses %}
-            <ul class="expenses-list">
-                {% for e in expenses %}
-                <li>
+            {% for e in expenses %}
+            <div class="expense-item">
+                <div class="expense-left">
+                    <div class="expense-dot">💸</div>
                     <div>
-                        <div class="amount">{{ e[0] }} so‘m</div>
-                        <div>{{ e[1] }}</div>
+                        <div class="expense-desc">{{ e[1] }}</div>
+                        <div class="expense-date">{{ e[2] }}</div>
                     </div>
-                    <div class="date">{{ e[2] }}</div>
-                </li>
-                {% endfor %}
-            </ul>
+                </div>
+                <div class="expense-amount">-{{ "{:,}".format(e[0]) }}</div>
+            </div>
+            {% endfor %}
         {% else %}
-            <p>Hozircha xarajat yo‘q</p>
+            <div class="empty-state">
+                <div class="emoji">📭</div>
+                <p>Hozircha xarajatlar yo'q</p>
+            </div>
         {% endif %}
     </div>
 
-</div>
+</main>
+
+
+<script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
+</script>
 
 </body>
 </html>

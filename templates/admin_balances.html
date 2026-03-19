@@ -2,71 +2,390 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <title>Kompaniyalar balansi</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanslar | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        .card {
-            background: white;
-            padding: 30px;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f0f2f8;
+            --sidebar-bg: #0a0f1e;
+            --sidebar-w: 240px;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #3b6ef6;
+            --accent2: #00d4aa;
+            --danger: #ef4444;
+            --success: #16a34a;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        .sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); min-height: 100vh; display: flex; flex-direction: column; padding: 28px 16px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+        .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 36px; }
+        .sidebar-logo .icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .sidebar-logo .brand { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: white; line-height: 1.3; }
+        .sidebar-logo .brand span { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.35); font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; }
+        .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.25); padding: 0 12px; margin: 20px 0 8px; }
+        .sidebar a { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 10px; color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s; margin-bottom: 2px; }
+        .sidebar a:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+        .sidebar a.active { background: linear-gradient(135deg, rgba(59,110,246,0.25), rgba(0,212,170,0.15)); color: white; border-left: 2px solid var(--accent2); }
+        .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+        .user-badge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); }
+        .user-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .user-info .name { font-size: 13px; font-weight: 600; color: white; }
+        .user-info .role { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+        .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+        .page-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+        .page-title span { display: block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+        /* TOTAL BANNER */
+        .total-banner {
+            background: linear-gradient(135deg, #0a0f1e, #1e3a5f);
+            border-radius: 20px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: relative; overflow: hidden;
+        }
+
+        .total-banner::before {
+            content: '';
+            position: absolute;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(0,212,170,0.2), transparent);
+            top: -100px; right: -50px; border-radius: 50%;
+        }
+
+        .total-banner::after {
+            content: '';
+            position: absolute;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(59,110,246,0.25), transparent);
+            bottom: -60px; left: 30%; border-radius: 50%;
+        }
+
+        .total-left { position: relative; z-index: 1; }
+        .total-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
+        .total-val { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; color: white; line-height: 1; }
+        .total-val sup { font-size: 18px; opacity: 0.5; vertical-align: super; margin-right: 4px; }
+        .total-sub { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 8px; }
+        .total-right { position: relative; z-index: 1; font-size: 64px; opacity: 0.12; }
+
+        /* COMPANIES GRID */
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .balance-card {
+            background: var(--card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .balance-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.10); }
+
+        .balance-card-top {
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .company-info { display: flex; align-items: center; gap: 12px; }
+
+        .company-avatar {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, rgba(59,110,246,0.15), rgba(0,212,170,0.1));
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+
+        .company-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+        .company-id-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .balance-amount {
+            text-align: right;
+        }
+
+        .balance-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 20px; font-weight: 800;
+        }
+
+        .balance-num.positive { color: var(--success); }
+        .balance-num.zero { color: var(--danger); }
+        .balance-num.low { color: #f59e0b; }
+
+        .balance-currency { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        /* PROGRESS BAR */
+        .progress-wrap { padding: 0 22px 16px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .progress-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+        /* ADD FORM */
+        .add-form-wrap { padding: 16px 22px 20px; border-top: 1px solid var(--border); background: #fafbff; }
+        .add-form-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+
+        .add-form-row { display: flex; gap: 8px; }
+
+        .add-form-row input {
+            flex: 1; padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px; font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text); outline: none;
+            background: white; transition: border-color 0.2s;
+        }
+
+        .add-form-row input:focus { border-color: var(--accent2); }
+
+        .btn-topup {
+            padding: 10px 18px;
+            background: linear-gradient(135deg, var(--accent2), #0891b2);
+            color: white; border: none; border-radius: 9px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-topup:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(0,212,170,0.35); }
+
+        /* SUCCESS toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: #0a0f1e; color: white;
+            padding: 14px 20px; border-radius: 12px;
+            font-size: 14px; font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: flex; align-items: center; gap: 10px;
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+            z-index: 999;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .main { margin-left: 0; padding: 20px; }
+            .companies-grid { grid-template-columns: 1fr; }
+        }
+
+
+        /* Jadval scroll */
+        .table-card, .card { overflow-x: auto; }
+        table { min-width: 500px; }
+        @media (max-width: 480px) {
+            .stats, .stats-row, .summary-row { grid-template-columns: 1fr 1fr !important; }
+            .top-row, .bottom-grid, .actions-grid { grid-template-columns: 1fr !important; }
+            .hero-name { font-size: 18px; }
+            .balance-value, .total-val { font-size: 28px !important; }
+        }
+
+        /* ===== MOBILE ===== */
+        .hamburger {
+            display: none;
+            position: fixed;
+            top: 16px; left: 16px;
+            z-index: 200;
+            width: 44px; height: 44px;
+            background: #0a0f1e;
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
-            max-width: 600px;
-            margin: 40px auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,.15);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 10px;
-            text-align: center;
-        }
-
-        input {
-            padding: 6px;
-            width: 90px;
-        }
-
-        button {
-            padding: 6px 10px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
             cursor: pointer;
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 5px;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 20px; height: 2px;
+            background: white; border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+                z-index: 150;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>💰 Kompaniyalar balansi</h2>
 
-    <table>
-        <tr>
-            <th>Kompaniya</th>
-            <th>Balans</th>
-            <th>To‘ldirish</th>
-        </tr>
-
-        {% for c in companies %}
-        <tr>
-            <td>{{ c[1] }}</td>
-            <td>{{ "{:,}".format(c[2]) }} so‘m</td>
-            <td>
-                <form method="POST">
-                    <input type="hidden" name="company_id" value="{{ c[0] }}">
-                    <input type="number" name="amount" placeholder="+ so‘m" required>
-                    <button type="submit">➕</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+<div class="hamburger" id="hamburger" onclick="toggleSidebar()">
+    <span></span><span></span><span></span>
 </div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <div class="nav-section">Boshqaruv</div>
+    <a href="{{ url_for('admin_companies') }}">🏢 Kompaniyalar</a>
+    <a href="{{ url_for('admin_directors') }}">👔 Direktorlar</a>
+    <a href="{{ url_for('admin_expenses') }}">💸 Xarajatlar</a>
+    <a href="{{ url_for('admin_balances') }}" class="active">💰 Balans</a>
+    <a href="{{ url_for('admin_reports') }}">📈 Hisobotlar</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Admin</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+
+    <div class="topbar">
+        <div class="page-title">
+            Balanslar
+            <span>Kompaniyalar balansini boshqarish</span>
+        </div>
+    </div>
+
+    <!-- TOTAL BANNER -->
+    {% set grand = namespace(total=0) %}
+    {% for c in companies %}{% set grand.total = grand.total + c[2] %}{% endfor %}
+
+    <div class="total-banner">
+        <div class="total-left">
+            <div class="total-label">Umumiy jamg'arma</div>
+            <div class="total-val">
+                <sup>so'm</sup>{{ "{:,}".format(grand.total) }}
+            </div>
+            <div class="total-sub">{{ companies | length }} ta kompaniya bo'yicha</div>
+        </div>
+        <div class="total-right">💰</div>
+    </div>
+
+    <!-- COMPANIES -->
+    {% set max_balance = namespace(val=1) %}
+    {% for c in companies %}
+        {% if c[2] > max_balance.val %}{% set max_balance.val = c[2] %}{% endif %}
+    {% endfor %}
+
+    <div class="companies-grid">
+        {% for c in companies %}
+
+        {% set pct = ((c[2] / max_balance.val) * 100) | int if max_balance.val > 0 else 0 %}
+        {% if c[2] <= 0 %}
+            {% set bar_color = '#ef4444' %}
+            {% set bal_class = 'zero' %}
+        {% elif c[2] < 500000 %}
+            {% set bar_color = '#f59e0b' %}
+            {% set bal_class = 'low' %}
+        {% else %}
+            {% set bar_color = '#00d4aa' %}
+            {% set bal_class = 'positive' %}
+        {% endif %}
+
+        <div class="balance-card">
+            <div class="balance-card-top">
+                <div class="company-info">
+                    <div class="company-avatar">🏢</div>
+                    <div>
+                        <div class="company-name">{{ c[1] }}</div>
+                        <div class="company-id-label">#{{ c[0] }}</div>
+                    </div>
+                </div>
+                <div class="balance-amount">
+                    <div class="balance-num {{ bal_class }}">{{ "{:,}".format(c[2]) }}</div>
+                    <div class="balance-currency">so'm</div>
+                </div>
+            </div>
+
+            <div class="progress-wrap">
+                <div class="progress-label">
+                    <span>Balans darajasi</span>
+                    <span>{{ pct }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{{ pct }}%; background:{{ bar_color }};"></div>
+                </div>
+            </div>
+
+            <div class="add-form-wrap">
+                <div class="add-form-title">➕ Balans to'ldirish</div>
+                <form method="POST" class="add-form-row">
+                    <input type="hidden" name="company_id" value="{{ c[0] }}">
+                    <input type="number" name="amount" placeholder="Summa (so'm)" required min="1">
+                    <button type="submit" class="btn-topup" onclick="showToast('{{ c[1] }}')">
+                        To'ldirish
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted);">
+            📭 Kompaniyalar yo'q
+        </div>
+        {% endfor %}
+    </div>
+
+</main>
+
+<div class="toast" id="toast">✅ <span id="toastMsg">Balans to'ldirildi</span></div>
+
+<script>
+function showToast(name) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = name + ' balansi to\'ldirildi';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+</script>
+
+
+<script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
+</script>
 
 </body>
 </html>
