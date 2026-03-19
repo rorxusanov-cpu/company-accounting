@@ -419,9 +419,21 @@
             .overlay.open { display: block; }
             .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
-    </style>
+
+        </style>
 </head>
 <body>
+<script>
+// Sahifa yuklashdan OLDIN tema qo'llash (miltillashni oldini olish)
+(function() {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+        document.body.classList.add("dark");
+    } else if (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.body.classList.add("dark");
+    }
+})();
+</script>
 
 <!-- ===== SIDEBAR ===== -->
 
@@ -497,7 +509,7 @@
             <div class="stat-value">{{ "{:,}".format(total_expenses) }}</div>
         </a>
 
-        <div class="stat-card">
+        <div class="stat-card" id="qoldiCard" onclick="showQoldiModal()" style="cursor:pointer;">
             <div class="stat-icon">📈</div>
             <div class="stat-label">Qoldi</div>
             <div class="stat-value">{{ "{:,}".format(profit) }}</div>
@@ -597,6 +609,64 @@ function closeSidebar() {
     document.querySelector('.sidebar').classList.remove('open');
     document.getElementById('overlay').classList.remove('open');
 }
+
+// Icon ni sahifa yuklanganda to'g'ri ko'rsatish
+</script>
+
+<!-- QOLDI MODAL -->
+<div id="qoldiModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border-radius:16px;padding:28px;min-width:340px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;">
+        <button onclick="closeQoldiModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);">✕</button>
+        <h3 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:18px;color:var(--text);">💰 Kompaniyalar qoldigi</h3>
+        <div id="qoldiList" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;color:var(--muted);padding:20px;">Yuklanmoqda...</div>
+        </div>
+        <div id="qoldiTotal" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-weight:700;font-size:15px;color:var(--text);text-align:right;"></div>
+    </div>
+</div>
+
+<script>
+function showQoldiModal() {
+    const modal = document.getElementById('qoldiModal');
+    modal.style.display = 'flex';
+    document.getElementById('qoldiList').innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">⏳ Yuklanmoqda...</div>';
+    document.getElementById('qoldiTotal').textContent = '';
+
+    fetch('/api/company-balances')
+        .then(r => r.json())
+        .then(data => {
+            const list = document.getElementById('qoldiList');
+            if (!data.length) {
+                list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">Kompaniya topilmadi</div>';
+                return;
+            }
+            list.innerHTML = data.map((c, i) => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+                    <span style="display:flex;align-items:center;gap:8px;color:var(--text);font-weight:500;">
+                        <span style="background:var(--accent);color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;">${i+1}</span>
+                        ${c.name}
+                    </span>
+                    <span style="font-weight:700;color:${c.balance > 0 ? '#16a34a' : '#dc2626'};">
+                        ${c.balance.toLocaleString()} so'm
+                    </span>
+                </div>
+            `).join('');
+            const total = data.reduce((s, c) => s + c.balance, 0);
+            document.getElementById('qoldiTotal').innerHTML = `Jami qoldi: <span style="color:var(--accent)">${total.toLocaleString()} so'm</span>`;
+        })
+        .catch(() => {
+            document.getElementById('qoldiList').innerHTML = '<div style="text-align:center;color:#dc2626;padding:20px;">Xatolik yuz berdi</div>';
+        });
+}
+
+function closeQoldiModal() {
+    document.getElementById('qoldiModal').style.display = 'none';
+}
+
+// Modaldan tashqari bosganda yopilsin
+document.getElementById('qoldiModal').addEventListener('click', function(e) {
+    if (e.target === this) closeQoldiModal();
+});
 </script>
 
 </body>

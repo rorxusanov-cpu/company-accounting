@@ -1,0 +1,26 @@
+# Database — hech qachon GitHub ga ketmasin
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Upload qilingan fayllar
+static/uploads/
+
+# VS Code
+.vscode/
+
+# OS fayllar
+.DS_Store
+Thumbs.db

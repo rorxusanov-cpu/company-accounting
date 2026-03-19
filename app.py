@@ -1278,8 +1278,54 @@ def export_director_expenses():
 @app.route('/ping')
 def ping():
     return 'pong', 200
+
+
+# ================= O'CHIRISH =================
+@app.route("/admin/delete-company/<int:company_id>", methods=["POST"])
+def delete_company(company_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+    conn = get_db()
+    c = conn.cursor()
+    # Kompaniyaga bog'liq direktorlarni ajratib olamiz
+    c.execute("UPDATE users SET company_id=NULL WHERE company_id=?", (company_id,))
+    # Kompaniya xarajatlarini o'chiramiz
+    c.execute("DELETE FROM expenses WHERE company_id=?", (company_id,))
+    # Kompaniyani o'chiramiz
+    c.execute("DELETE FROM companies WHERE id=?", (company_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_companies"))
+
+
+@app.route("/admin/delete-director/<int:director_id>", methods=["POST"])
+def delete_director(director_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM users WHERE id=? AND role='director'", (director_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_directors"))
+
+# ================= QOLDI MODAL API =================
+@app.route('/api/company-balances')
+def company_balances():
+    if 'user' not in session:
+        return {'error': 'login required'}, 401
+    from flask import jsonify
+    conn = get_db()
+    c = conn.cursor()
+    if session.get('role') == 'admin':
+        c.execute("SELECT name, balance FROM companies ORDER BY balance DESC")
+    else:
+        c.execute("SELECT name, balance FROM companies WHERE id=?", (session.get('company_id'),))
+    rows = [{'name': r['name'], 'balance': r['balance']} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
 # ================= RUN =================
 if __name__ == "__main__":
     init_db()
     app.run(debug=False)
-    

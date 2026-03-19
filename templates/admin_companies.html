@@ -270,9 +270,11 @@
             .overlay.open { display: block; }
             .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
-    </style>
+
+        </style>
 </head>
 <body>
+
 
 
 <div class="hamburger" id="hamburger" onclick="toggleSidebar()">
@@ -314,7 +316,7 @@
         <div class="page-title">
             Kompaniyalar
             <span>Barcha kompaniyalar ro'yxati</span>
-        </div>
+    </div>
     </div>
 
     <!-- ADD FORM -->
@@ -390,6 +392,11 @@
                         <a href="{{ url_for('admin_company_detail', company_id=c.id) }}" class="btn-detail">
                             👁 Batafsil
                         </a>
+                        <form method="POST" action="{{ url_for('delete_company', company_id=c.id) }}" style="display:inline;" onsubmit="return confirm('{{ c.name }} kompaniyasini o\'chirishni tasdiqlaysizmi?\nBarcha xarajatlari ham o\'chib ketadi!')">
+                            <button type="submit" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;">
+                                🗑 O'chirish
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 {% else %}

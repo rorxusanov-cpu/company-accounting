@@ -278,9 +278,11 @@
             .overlay.open { display: block; }
             .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
-    </style>
+
+        </style>
 </head>
 <body>
+
 
 
 <div class="hamburger" id="hamburger" onclick="toggleSidebar()">
@@ -322,7 +324,7 @@
         <div class="page-title">
             Direktorlar
             <span>Barcha direktorlar va ularning kompaniyalari</span>
-        </div>
+    </div>
     </div>
 
     <!-- STATS -->
@@ -390,9 +392,16 @@
                     </div>
                 </div>
 
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
                 <a href="{{ url_for('admin_director_detail', director_id=d.id) }}" class="btn-profile">
                     👁 Profilni ko'rish →
                 </a>
+                <form method="POST" action="{{ url_for('delete_director', director_id=d.id) }}" onsubmit="return confirm('{{ d.username }} direktorini o\'chirishni tasdiqlaysizmi?')">
+                    <button type="submit" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;">
+                        🗑 O'chirish
+                    </button>
+                </form>
+                </div>
             </div>
             {% endfor %}
         {% else %}
