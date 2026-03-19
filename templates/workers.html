@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ishchilar | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg:#f0f2f8; --sidebar-bg:#0a0f1e; --sidebar-w:240px; --card:#fff; --text:#0f172a; --muted:#64748b; --accent:#3b6ef6; --accent2:#00d4aa; --danger:#ef4444; --border:#e2e8f0; --shadow:0 4px 24px rgba(0,0,0,0.06); }
+        body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+        .sidebar { width:var(--sidebar-w); background:var(--sidebar-bg); min-height:100vh; display:flex; flex-direction:column; padding:28px 16px; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+        .sidebar-logo { display:flex; align-items:center; gap:10px; padding:0 8px; margin-bottom:36px; }
+        .sidebar-logo .icon { width:38px; height:38px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+        .sidebar-logo .brand { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:white; line-height:1.3; }
+        .sidebar-logo .brand span { display:block; font-size:10px; font-weight:400; color:rgba(255,255,255,0.35); text-transform:uppercase; letter-spacing:0.06em; }
+        .nav-section { font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.25); padding:0 12px; margin:20px 0 8px; }
+        .sidebar a { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:10px; color:rgba(255,255,255,0.5); text-decoration:none; font-size:14px; font-weight:500; transition:all 0.2s; margin-bottom:2px; }
+        .sidebar a:hover { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.85); }
+        .sidebar a.active { background:linear-gradient(135deg,rgba(59,110,246,0.25),rgba(0,212,170,0.15)); color:white; border-left:2px solid var(--accent2); }
+        .sidebar-bottom { margin-top:auto; border-top:1px solid rgba(255,255,255,0.06); padding-top:16px; }
+        .user-badge { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.04); }
+        .user-avatar { width:34px; height:34px; background:linear-gradient(135deg,var(--accent),#8b5cf6); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+        .user-info .name { font-size:13px; font-weight:600; color:white; }
+        .user-info .role { font-size:11px; color:rgba(255,255,255,0.35); }
+        .main { margin-left:var(--sidebar-w); flex:1; padding:32px; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+        .page-title { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; }
+        .page-title span { display:block; font-size:14px; font-weight:400; color:var(--muted); margin-top:2px; font-family:'DM Sans',sans-serif; }
+        .balance-chip { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px 18px; font-size:14px; font-weight:600; box-shadow:var(--shadow); }
+        .card { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:24px; margin-bottom:24px; }
+        .card-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:18px; }
+        .form-row { display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr auto; gap:12px; align-items:end; }
+        .field label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:6px; }
+        .field input { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); outline:none; transition:border 0.2s; }
+        .field input:focus { border-color:var(--accent); }
+        .btn-add { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; border:none; border-radius:10px; padding:11px 22px; font-size:14px; font-weight:600; cursor:pointer; }
+        table { width:100%; border-collapse:collapse; font-size:14px; }
+        th { background:#f8fafc; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.07em; padding:12px 14px; text-align:left; border-bottom:1.5px solid var(--border); }
+        td { padding:13px 14px; border-bottom:1px solid var(--border); }
+        tr:hover td { background:#f8fafc; }
+        tr:last-child td { border-bottom:none; }
+        .btn-del { background:#fee2e2; color:#dc2626; border:none; border-radius:8px; padding:5px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+        .btn-salary { background:#dcfce7; color:#16a34a; border:none; border-radius:8px; padding:5px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+        .empty-state { text-align:center; padding:48px; color:var(--muted); }
+        .empty-state .emoji { font-size:40px; margin-bottom:12px; }
+        .error-box { background:#fee2e2; color:#dc2626; padding:12px 16px; border-radius:10px; margin-bottom:20px; }
+        /* MODAL */
+        .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; align-items:center; justify-content:center; }
+        .modal-bg.open { display:flex; }
+        .modal { background:var(--card); border-radius:16px; padding:28px; min-width:320px; max-width:400px; width:90%; position:relative; }
+        .modal h3 { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; margin-bottom:18px; }
+        .modal .field { margin-bottom:14px; }
+        .modal-close { position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); }
+        .hamburger { display:none; position:fixed; top:16px; left:16px; z-index:200; background:var(--sidebar-bg); border:none; border-radius:10px; padding:8px 10px; cursor:pointer; flex-direction:column; gap:5px; }
+        .hamburger span { display:block; width:22px; height:2px; background:white; border-radius:2px; }
+        .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+        @media(max-width:768px) {
+            .hamburger { display:flex; }
+            .sidebar { transform:translateX(-100%); transition:transform 0.3s; }
+            .sidebar.open { transform:translateX(0); }
+            .overlay.open { display:block; }
+            .main { margin-left:0; padding:20px; padding-top:70px; }
+            .form-row { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('expenses') }}">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}" class="active">👷 Ishchilar</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="topbar">
+        <div class="page-title">Ishchilar <span>Kompaniya ishchilarini boshqarish</span></div>
+        <div class="balance-chip">💰 Balans: {{ "{:,}".format(balance) }} so'm</div>
+    </div>
+
+    {% if error %}<div class="error-box">⚠️ {{ error }}</div>{% endif %}
+
+    <!-- QO'SHISH -->
+    <div class="card">
+        <div class="card-title">➕ Yangi ishchi qo'shish</div>
+        <form method="POST">
+            <input type="hidden" name="action" value="add">
+            <div class="form-row">
+                <div class="field">
+                    <label>Ism Familiya</label>
+                    <input type="text" name="full_name" placeholder="Alisher Karimov" required>
+                </div>
+                <div class="field">
+                    <label>Lavozim</label>
+                    <input type="text" name="position" placeholder="Dasturchi">
+                </div>
+                <div class="field">
+                    <label>Telefon</label>
+                    <input type="text" name="phone" placeholder="+998901234567">
+                </div>
+                <div class="field">
+                    <label>Oylik maosh (so'm)</label>
+                    <input type="number" name="monthly_salary" placeholder="0" min="0" required>
+                </div>
+                <button type="submit" class="btn-add">➕ Qo'shish</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- RO'YXAT -->
+    <div class="card">
+        <div class="card-title">👷 Ishchilar ro'yxati</div>
+        {% if workers %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Ism Familiya</th>
+                    <th>Lavozim</th>
+                    <th>Telefon</th>
+                    <th>Jami maosh</th>
+                    <th>Qo'shilgan</th>
+                    <th>Amal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in workers %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ w.full_name }}</strong></td>
+                    <td>{{ w.position or '—' }}</td>
+                    <td>{{ w.phone or '—' }}</td>
+                    <td>{{ "{:,}".format(w.total_salary) }} so'm</td>
+                    <td>{{ w.created_at }}</td>
+                    <td style="display:flex;gap:6px;">
+                        <a href="{{ url_for('worker_detail', worker_id=w.id) }}" style="background:#eff6ff;color:#3b6ef6;border:none;border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600;text-decoration:none;">👁 Batafsil</a>
+                        <button class="btn-salary" onclick="openSalary({{ w.id }}, '{{ w.full_name }}')">💰 Maosh</button>
+                        <form method="POST" onsubmit="return confirm('{{ w.full_name }} ni o\'chirishni tasdiqlaysizmi?')">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="worker_id" value="{{ w.id }}">
+                            <button type="submit" class="btn-del">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="emoji">👷</div>
+            <p>Hozircha ishchilar yo'q</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+
+<!-- MAOSH MODAL -->
+<div class="modal-bg" id="salaryModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeSalary()">✕</button>
+        <h3>💰 Maosh berish — <span id="workerName"></span></h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="salary">
+            <input type="hidden" name="worker_id" id="workerIdInput">
+            <div class="field">
+                <label>Summa (so'm)</label>
+                <input type="number" name="amount" placeholder="0" min="1" required>
+            </div>
+            <div class="field">
+                <label>Izoh</label>
+                <input type="text" name="note" placeholder="Mart oyi maoshi">
+            </div>
+            <button type="submit" class="btn-add" style="width:100%;margin-top:4px;">✅ Berish</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openSalary(id, name) {
+    document.getElementById('workerIdInput').value = id;
+    document.getElementById('workerName').textContent = name;
+    document.getElementById('salaryModal').classList.add('open');
+}
+function closeSalary() {
+    document.getElementById('salaryModal').classList.remove('open');
+}
+document.getElementById('salaryModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSalary();
+});
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>

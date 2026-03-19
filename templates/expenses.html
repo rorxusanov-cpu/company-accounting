@@ -411,9 +411,11 @@
             .overlay.open { display: block; }
             .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
-    </style>
+
+        </style>
 </head>
 <body>
+
 
 <!-- ===== SIDEBAR ===== -->
 
@@ -433,6 +435,7 @@
 
     <div class="nav-section">Mening</div>
     <a href="{{ url_for('expenses') }}" class="active">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}">👷 Ishchilar</a>
 
     <div class="sidebar-bottom">
         <div class="user-badge">
@@ -453,7 +456,7 @@
         <div class="page-title">
             Xarajatlar
             <span>Kompaniya xarajatlarini boshqarish</span>
-        </div>
+    </div>
     </div>
 
     {% if error %}

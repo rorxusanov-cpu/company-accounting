@@ -40,7 +40,9 @@ def send_telegram_message(text):
 
 # ================= DATABASE =================
 def get_db():
-    conn = sqlite3.connect("users.db")
+    # Render da /data papkasi persistent disk, localda oddiy fayl
+    db_path = "/data/users.db" if os.path.exists("/data") else "users.db"
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -91,6 +93,63 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS workers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT,
+        position TEXT,
+        phone TEXT,
+        company_id INTEGER,
+        status TEXT DEFAULT 'active',
+        monthly_salary INTEGER DEFAULT 0,
+        created_at TEXT
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS salaries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        worker_id INTEGER,
+        company_id INTEGER,
+        amount INTEGER,
+        note TEXT,
+        created_at TEXT
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        worker_id INTEGER,
+        company_id INTEGER,
+        date TEXT,
+        status TEXT DEFAULT 'present',
+        note TEXT,
+        created_at TEXT
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS advances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        worker_id INTEGER,
+        company_id INTEGER,
+        amount INTEGER,
+        note TEXT,
+        created_at TEXT
+    )
+    """)
+
+    # monthly_salary ustunini mavjud workers jadvaliga qo'shish (migration)
+    try:
+        c.execute("ALTER TABLE workers ADD COLUMN status TEXT DEFAULT 'active'")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE workers ADD COLUMN monthly_salary INTEGER DEFAULT 0")
+    except:
+        pass
+
     # Default admin: parol hash qilingan holda saqlanadi
     c.execute("SELECT * FROM users WHERE role='admin'")
     if not c.fetchone():
@@ -118,7 +177,7 @@ def login():
         conn = get_db()
         c = conn.cursor()
         c.execute(
-            "SELECT id, username, password, role FROM users WHERE username=?",
+            "SELECT id, username, password, role, company_id FROM users WHERE username=?",
             (username,)
         )
         user = c.fetchone()
@@ -129,6 +188,7 @@ def login():
             session["user_id"] = user["id"]
             session["user"] = user["username"]
             session["role"] = user["role"]
+            session["company_id"] = user["company_id"]
             return redirect(url_for("dashboard"))
         else:
             error = "Login yoki parol noto'g'ri!"
@@ -1275,12 +1335,237 @@ def export_director_expenses():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={fname}"})
 
+
+# ================= ISHCHILAR =================
+@app.route("/workers", methods=["GET", "POST"])
+def workers():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    if session.get("role") != "director":
+        return "Ruxsat yo'q ❌"
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # Direktorning kompaniyasini topamiz
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    row = c.fetchone()
+    company_id = row["company_id"] if row else None
+
+    error = ""
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "add":
+            full_name = request.form.get("full_name", "").strip()
+            position = request.form.get("position", "").strip()
+            phone = request.form.get("phone", "").strip()
+            monthly_salary = int(request.form.get("monthly_salary", 0) or 0)
+            if full_name:
+                c.execute(
+                    "INSERT INTO workers (full_name, position, phone, company_id, monthly_salary, created_at) VALUES (?,?,?,?,?,?)",
+                    (full_name, position, phone, company_id, monthly_salary, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                )
+                conn.commit()
+
+        elif action == "salary":
+            worker_id = int(request.form.get("worker_id", 0))
+            amount = int(request.form.get("amount", 0))
+            note = request.form.get("note", "").strip()
+
+            # Balansni tekshirish
+            c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+            bal = c.fetchone()
+            if not bal or bal["balance"] < amount:
+                error = "Balans yetarli emas!"
+            elif amount <= 0:
+                error = "Summa 0 dan katta bo'lishi kerak!"
+            else:
+                c.execute(
+                    "INSERT INTO salaries (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
+                    (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                )
+                c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                conn.commit()
+
+        elif action == "delete":
+            worker_id = int(request.form.get("worker_id", 0))
+            c.execute("DELETE FROM workers WHERE id=? AND company_id=?", (worker_id, company_id))
+            c.execute("DELETE FROM salaries WHERE worker_id=?", (worker_id,))
+            conn.commit()
+
+        conn.close()
+        return redirect(url_for("workers"))
+
+    # Ishchilar ro'yxati
+    c.execute("""
+        SELECT w.id, w.full_name, w.position, w.phone, w.created_at,
+               IFNULL(SUM(s.amount), 0) AS total_salary
+        FROM workers w
+        LEFT JOIN salaries s ON s.worker_id = w.id
+        WHERE w.company_id=?
+        GROUP BY w.id
+        ORDER BY w.id DESC
+    """, (company_id,))
+    worker_list = c.fetchall()
+
+    # Kompaniya balansi
+    c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+    bal_row = c.fetchone()
+    balance = bal_row["balance"] if bal_row else 0
+
+    conn.close()
+    return render_template("workers.html", workers=worker_list, balance=balance, error=error)
+
+
 @app.route('/ping')
 def ping():
     return 'pong', 200
 
 
-# ================= O'CHIRISH =================
+# ================= WORKER DETAIL =================
+@app.route("/workers/<int:worker_id>", methods=["GET", "POST"])
+def worker_detail(worker_id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # company_id ni DB dan olamiz — session da bo'lmasa ham ishlaydi
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else session.get("company_id")
+
+    c.execute("SELECT * FROM workers WHERE id=? AND company_id=?", (worker_id, company_id))
+    worker = c.fetchone()
+    if not worker:
+        conn.close()
+        return "Ishchi topilmadi", 404
+
+    error = ""
+    success = ""
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "toggle_status":
+            new_status = "paused" if worker["status"] == "active" else "active"
+            c.execute("UPDATE workers SET status=? WHERE id=?", (new_status, worker_id))
+            conn.commit()
+
+        elif action == "update_salary":
+            new_salary = int(request.form.get("monthly_salary", 0) or 0)
+            c.execute("UPDATE workers SET monthly_salary=? WHERE id=?", (new_salary, worker_id))
+            conn.commit()
+            success = "Oylik maosh yangilandi!"
+
+        elif action == "attendance":
+            date = request.form.get("date")
+            att_status = request.form.get("att_status", "absent")
+            note = request.form.get("note", "")
+            c.execute("SELECT id FROM attendance WHERE worker_id=? AND date=?", (worker_id, date))
+            if c.fetchone():
+                c.execute("UPDATE attendance SET status=?, note=? WHERE worker_id=? AND date=?",
+                          (att_status, note, worker_id, date))
+            else:
+                c.execute("INSERT INTO attendance (worker_id, company_id, date, status, note, created_at) VALUES (?,?,?,?,?,?)",
+                          (worker_id, company_id, date, att_status, note, datetime.now().strftime("%Y-%m-%d %H:%M")))
+            conn.commit()
+
+        elif action == "advance":
+            amount = int(request.form.get("amount", 0) or 0)
+            note = request.form.get("note", "").strip()
+            c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+            bal = c.fetchone()
+            if not bal or bal["balance"] < amount:
+                error = "Balans yetarli emas!"
+            elif amount <= 0:
+                error = "Summa 0 dan katta bo'lishi kerak!"
+            else:
+                c.execute("INSERT INTO advances (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
+                          (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                conn.commit()
+                success = "Avans berildi!"
+
+        elif action == "pay_salary":
+            amount = int(request.form.get("amount", 0) or 0)
+            note = request.form.get("note", "").strip()
+            c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+            bal = c.fetchone()
+            if not bal or bal["balance"] < amount:
+                error = "Balans yetarli emas!"
+            elif amount <= 0:
+                error = "Summa 0 dan katta bo'lishi kerak!"
+            else:
+                c.execute("INSERT INTO salaries (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
+                          (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                conn.commit()
+                success = "Maosh to'landi!"
+
+        conn.close()
+        return redirect(url_for("worker_detail", worker_id=worker_id))
+
+    now = datetime.now()
+    month_str = now.strftime("%Y-%m")
+
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM salaries WHERE worker_id=? AND created_at LIKE ?",
+              (worker_id, month_str + "%"))
+    month_salary_paid = c.fetchone()[0]
+
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM advances WHERE worker_id=? AND created_at LIKE ?",
+              (worker_id, month_str + "%"))
+    month_advances = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM attendance WHERE worker_id=? AND status='present' AND date LIKE ?",
+              (worker_id, month_str + "%"))
+    days_present = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM attendance WHERE worker_id=? AND status='absent' AND date LIKE ?",
+              (worker_id, month_str + "%"))
+    days_absent = c.fetchone()[0]
+
+    monthly_salary = worker["monthly_salary"] or 0
+    salary_left = monthly_salary - month_salary_paid - month_advances
+
+    c.execute("SELECT date, status, note FROM attendance WHERE worker_id=? ORDER BY date DESC LIMIT 30",
+              (worker_id,))
+    attendance_list = c.fetchall()
+
+    c.execute("SELECT amount, note, created_at FROM salaries WHERE worker_id=? ORDER BY created_at DESC LIMIT 10",
+              (worker_id,))
+    salary_history = c.fetchall()
+
+    c.execute("SELECT amount, note, created_at FROM advances WHERE worker_id=? ORDER BY created_at DESC LIMIT 10",
+              (worker_id,))
+    advance_history = c.fetchall()
+
+    c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+    bal_row = c.fetchone()
+    balance = bal_row["balance"] if bal_row else 0
+
+    conn.close()
+    return render_template("worker_detail.html",
+        worker=worker,
+        month_salary_paid=month_salary_paid,
+        month_advances=month_advances,
+        days_present=days_present,
+        days_absent=days_absent,
+        salary_left=salary_left,
+        attendance_list=attendance_list,
+        salary_history=salary_history,
+        advance_history=advance_history,
+        balance=balance,
+        error=error,
+        success=success,
+        today=now.strftime("%Y-%m-%d"),
+        month_name=now.strftime("%B %Y")
+    )
+
+
 @app.route("/admin/delete-company/<int:company_id>", methods=["POST"])
 def delete_company(company_id):
     if session.get("role") != "admin":
