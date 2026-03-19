@@ -11,7 +11,8 @@
 <div class="login-box">
     <h2>📆 Sana bo‘yicha xarajatlar</h2>
 
- <form method="POST">
+<form method="POST" action="{{ url_for('expenses') }}">
+
     <input type="number" name="amount" placeholder="Summa" required>
     <input type="text" name="description" placeholder="Izoh" required>
     <button type="submit">➕ Xarajat qo‘shish</button>
