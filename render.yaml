@@ -8,3 +8,10 @@ services:
       name: database
       mountPath: /data
       sizeGB: 1
+
+  - type: cron
+    name: daily-report
+    env: python
+    schedule: "0 18 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python daily_report.py

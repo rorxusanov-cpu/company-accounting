@@ -1162,6 +1162,10 @@ def admin_reports():
         weekly_labels.append(day[-5:])
         weekly_values.append(c.fetchone()[0])
 
+    # Kompaniyalar ro'yxati (Telegram yuborish modal uchun)
+    c.execute("SELECT id, name FROM companies ORDER BY name")
+    companies_list = c.fetchall()
+
     conn.close()
 
     return render_template(
@@ -1177,6 +1181,7 @@ def admin_reports():
         top_directors=top_directors,
         weekly_labels=weekly_labels,
         weekly_values=weekly_values,
+        companies_list=companies_list,
     )
 
 
@@ -1621,9 +1626,425 @@ def workers():
     return render_template("workers.html", workers=worker_list, balance=balance, error=error)
 
 
+# ================= PROFIL (DIRECTOR) =================
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE id=?", (session["user_id"],))
+    user = c.fetchone()
+
+    error = ""
+    success = ""
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "change_password":
+            old_pass = request.form.get("old_password", "")
+            new_pass = request.form.get("new_password", "")
+            confirm = request.form.get("confirm_password", "")
+
+            if not check_password_hash(user["password"], old_pass):
+                error = "Eski parol noto'g'ri!"
+            elif len(new_pass) < 6:
+                error = "Yangi parol kamida 6 ta belgidan iborat bo'lishi kerak!"
+            elif new_pass != confirm:
+                error = "Parollar mos kelmadi!"
+            else:
+                c.execute("UPDATE users SET password=? WHERE id=?",
+                          (generate_password_hash(new_pass), session["user_id"]))
+                conn.commit()
+                success = "Parol muvaffaqiyatli yangilandi!"
+
+    comp = None
+    if user["company_id"]:
+        c.execute("SELECT name FROM companies WHERE id=?", (user["company_id"],))
+        comp = c.fetchone()
+
+    if session.get("role") == "admin":
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses")
+        total_exp = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM expenses")
+        exp_count = c.fetchone()[0]
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')")
+        month_exp = c.fetchone()[0]
+    else:
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE user_id=?", (session["user_id"],))
+        total_exp = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM expenses WHERE user_id=?", (session["user_id"],))
+        exp_count = c.fetchone()[0]
+        c.execute("""SELECT IFNULL(SUM(amount),0) FROM expenses
+                     WHERE user_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')""",
+                  (session["user_id"],))
+        month_exp = c.fetchone()[0]
+
+    conn.close()
+    return render_template("profile_page.html",
+        user=user,
+        company_name=comp["name"] if comp else "—",
+        total_exp=total_exp,
+        exp_count=exp_count,
+        month_exp=month_exp,
+        error=error,
+        success=success
+    )
+
+
+# ================= HISOBOTIM (DIRECTOR) =================
+@app.route("/my-reports")
+def my_reports():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else None
+
+    # Oylik trend (oxirgi 6 oy)
+    monthly = []
+    for i in range(5, -1, -1):
+        from datetime import date
+        d = datetime.now()
+        month = (d.month - i - 1) % 12 + 1
+        year = d.year - ((d.month - i - 1) // 12)
+        month_str = f"{year}-{month:02d}"
+        c.execute("""SELECT IFNULL(SUM(amount),0) FROM expenses
+                     WHERE company_id=? AND strftime('%Y-%m',created_at)=?""",
+                  (company_id, month_str))
+        monthly.append({"month": month_str, "total": c.fetchone()[0]})
+
+    # Umumiy statistika
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?", (company_id,))
+    total_all = c.fetchone()[0]
+
+    c.execute("""SELECT IFNULL(SUM(amount),0) FROM expenses
+                 WHERE company_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')""",
+              (company_id,))
+    total_month = c.fetchone()[0]
+
+    c.execute("""SELECT IFNULL(SUM(amount),0) FROM expenses
+                 WHERE company_id=? AND date(created_at)=date('now')""", (company_id,))
+    total_today = c.fetchone()[0]
+
+    c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+    bal = c.fetchone()
+    balance = bal["balance"] if bal else 0
+
+    # Top xarajatlar (tavsif bo'yicha)
+    c.execute("""SELECT description, SUM(amount) as total, COUNT(*) as cnt
+                 FROM expenses WHERE company_id=?
+                 GROUP BY description ORDER BY total DESC LIMIT 8""", (company_id,))
+    top_expenses = c.fetchall()
+
+    # So'nggi 20 xarajat
+    c.execute("""SELECT amount, description, created_at FROM expenses
+                 WHERE company_id=? ORDER BY created_at DESC LIMIT 20""", (company_id,))
+    recent = c.fetchall()
+
+    conn.close()
+    return render_template("my_reports.html",
+        monthly=monthly,
+        total_all=total_all,
+        total_month=total_month,
+        total_today=total_today,
+        balance=balance,
+        top_expenses=top_expenses,
+        recent=recent,
+    )
+
+
 @app.route('/ping')
 def ping():
     return 'pong', 200
+
+
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory
+    return send_from_directory('static', 'sw.js',
+                               mimetype='application/javascript')
+
+
+@app.route('/offline')
+def offline():
+    return '''<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Offline | Company Accounting</title>
+    <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f2f8;margin:0}
+    .box{text-align:center;padding:40px;background:white;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+    .emoji{font-size:60px;margin-bottom:16px}.title{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:8px}
+    .sub{color:#64748b;font-size:14px;margin-bottom:24px}
+    .btn{background:linear-gradient(135deg,#3b6ef6,#00d4aa);color:white;border:none;border-radius:12px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer}
+    </style></head><body>
+    <div class="box">
+      <div class="emoji">📡</div>
+      <div class="title">Internet yo'q</div>
+      <div class="sub">Internetga ulanib qayta urinib ko'ring</div>
+      <button class="btn" onclick="location.reload()">🔄 Qayta urinish</button>
+    </div></body></html>''', 200
+
+
+@app.route('/admin/send-daily-report')
+def send_daily_report_now():
+    if session.get('role') != 'admin':
+        return "Ruxsat yo'q ❌"
+    try:
+        import daily_report
+        daily_report.main()
+        return "✅ Hisobot muvaffaqiyatli yuborildi! Telegramni tekshiring."
+    except Exception as e:
+        return f"❌ Xatolik: {e}"
+
+
+@app.route('/admin/send-report-telegram', methods=['POST'])
+def send_report_telegram():
+    if session.get('role') != 'admin':
+        return {'error': 'ruxsat yoq'}, 401
+    from flask import jsonify
+
+    date_from = request.form.get('date_from', '')
+    date_to = request.form.get('date_to', '')
+    company_id = request.form.get('company_id', 'all')
+    fmt = request.form.get('format', 'both')
+
+    try:
+        conn = get_db()
+        c = conn.cursor()
+
+        # Sana sharti
+        if date_from and date_to:
+            date_cond = f"date(e.created_at) BETWEEN '{date_from}' AND '{date_to}'"
+            period_label = f"{date_from} — {date_to}"
+        elif date_from:
+            date_cond = f"date(e.created_at) >= '{date_from}'"
+            period_label = f"{date_from} dan"
+        else:
+            date_cond = "1=1"
+            period_label = "Barcha vaqt"
+
+        # Kompaniya sharti
+        if company_id != 'all':
+            comp_cond = f"e.company_id = {int(company_id)}"
+            c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+            row = c.fetchone()
+            comp_label = row['name'] if row else "Noma'lum"
+        else:
+            comp_cond = "1=1"
+            comp_label = "Barcha kompaniyalar"
+
+        where = f"WHERE {date_cond} AND {comp_cond}"
+
+        # Xarajatlar
+        c.execute(f"""
+            SELECT e.amount, e.description, e.created_at,
+                   c.name as company, u.username as director
+            FROM expenses e
+            JOIN companies c ON e.company_id=c.id
+            LEFT JOIN users u ON e.user_id=u.id
+            {where}
+            ORDER BY e.created_at DESC
+        """)
+        expenses = c.fetchall()
+
+        # Kompaniyalar balansi
+        if company_id != 'all':
+            c.execute("SELECT id, name, balance FROM companies WHERE id=?", (company_id,))
+        else:
+            c.execute("SELECT id, name, balance FROM companies ORDER BY balance DESC")
+        companies = c.fetchall()
+
+        total_exp = sum(e['amount'] for e in expenses)
+        conn.close()
+
+        # Telegram xabar
+        msg = (
+            f"╔══════════════════════╗\n"
+            f"║  📊  <b>MAXSUS HISOBOT</b>  📊  ║\n"
+            f"╚══════════════════════╝\n\n"
+            f"📅 <b>Davr:</b> {period_label}\n"
+            f"🏢 <b>Kompaniya:</b> {comp_label}\n"
+            f"💸 <b>Jami xarajat:</b> <code>{total_exp:,} so'm</code>\n"
+            f"📋 <b>Xarajatlar soni:</b> {len(expenses)} ta\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏦 <b>BALANSLAR</b>\n"
+        )
+        for comp in companies:
+            emoji = "🟢" if comp['balance'] > 0 else "🔴"
+            msg += f"{emoji} {comp['name']}: <code>{comp['balance']:,} so'm</code>\n"
+
+        send_telegram_message(msg)
+
+        # Excel
+        if fmt in ('excel', 'both'):
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Hisobot"
+            ws.sheet_view.showGridLines = False
+
+            # Sarlavha
+            ws.merge_cells("A1:F1")
+            ws["A1"] = f"HISOBOT: {period_label} | {comp_label}"
+            ws["A1"].font = Font(bold=True, size=13, color="FFFFFF", name="Arial")
+            ws["A1"].fill = PatternFill("solid", fgColor="0F2044")
+            ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+            ws.row_dimensions[1].height = 30
+
+            # Jadval sarlavhasi
+            heads = ["#", "Sana", "Kompaniya", "Direktor", "Summa (so'm)", "Izoh"]
+            widths = [5, 18, 22, 16, 18, 35]
+            side = Side(style="thin", color="D0D7E3")
+            b = Border(left=side, right=side, top=side, bottom=side)
+            for j, (h, w) in enumerate(zip(heads, widths), 1):
+                cell = ws.cell(row=2, column=j, value=h)
+                cell.font = Font(bold=True, color="FFFFFF", size=10, name="Arial")
+                cell.fill = PatternFill("solid", fgColor="1E3A5F")
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = b
+                ws.column_dimensions[get_column_letter(j)].width = w
+            ws.row_dimensions[2].height = 20
+
+            for i, exp in enumerate(expenses, 1):
+                row = i + 2
+                bg = "F0F7FF" if i % 2 == 0 else "FFFFFF"
+                vals = [i, str(exp['created_at'])[:16], exp['company'],
+                        exp['director'] or '—', exp['amount'], exp['description'] or '—']
+                for j, v in enumerate(vals, 1):
+                    cell = ws.cell(row=row, column=j, value=v)
+                    cell.font = Font(size=9, name="Arial")
+                    cell.fill = PatternFill("solid", fgColor=bg)
+                    cell.alignment = Alignment(horizontal="right" if j == 5 else "center" if j in [1,2,4] else "left")
+                    cell.border = b
+                    if j == 5:
+                        cell.number_format = '#,##0'
+                ws.row_dimensions[row].height = 16
+
+            # Jami
+            tr = len(expenses) + 3
+            ws.cell(row=tr, column=4, value="JAMI:").font = Font(bold=True, size=10, name="Arial")
+            tc = ws.cell(row=tr, column=5, value=total_exp)
+            tc.font = Font(bold=True, color="DC2626", size=11, name="Arial")
+            tc.number_format = '#,##0'
+            tc.alignment = Alignment(horizontal="right")
+            for ci in range(1, 7):
+                ws.cell(row=tr, column=ci).fill = PatternFill("solid", fgColor="E8F4FD")
+                ws.cell(row=tr, column=ci).border = b
+            ws.row_dimensions[tr].height = 22
+
+            import io as _io
+            xbuf = _io.BytesIO()
+            wb.save(xbuf)
+            xbuf.seek(0)
+            fname = f"hisobot_{date_from or 'barchasi'}_{comp_label[:15]}.xlsx"
+            send_telegram_file_direct(xbuf.read(), fname, f"📊 Excel | {period_label} | {comp_label}")
+
+        # PDF
+        if fmt in ('pdf', 'both'):
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib import colors as rl_colors
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import cm
+            from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
+                                             Paragraph, Spacer, HRFlowable)
+            import io as _io
+
+            pbuf = _io.BytesIO()
+            doc = SimpleDocTemplate(pbuf, pagesize=A4,
+                                    rightMargin=1.5*cm, leftMargin=1.5*cm,
+                                    topMargin=1.5*cm, bottomMargin=1.5*cm)
+            styles = getSampleStyleSheet()
+            story = []
+
+            story.append(Paragraph(f"Hisobot: {period_label}",
+                ParagraphStyle('t', parent=styles['Normal'], fontSize=16,
+                               fontName='Helvetica-Bold',
+                               textColor=rl_colors.HexColor('#0f2044'), spaceAfter=3)))
+            story.append(Paragraph(f"{comp_label}  |  Yaratildi: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                ParagraphStyle('s', parent=styles['Normal'], fontSize=9,
+                               textColor=rl_colors.HexColor('#64748b'), spaceAfter=10)))
+            story.append(HRFlowable(width="100%", thickness=2,
+                                    color=rl_colors.HexColor('#3b6ef6')))
+            story.append(Spacer(1, 10))
+
+            # Balanslar
+            story.append(Paragraph("Kompaniyalar Balansi",
+                ParagraphStyle('h2', parent=styles['Normal'], fontSize=11,
+                               fontName='Helvetica-Bold', spaceAfter=6)))
+            bal_data = [["Kompaniya", "Balans"]]
+            for comp in companies:
+                bal_data.append([comp['name'], f"{comp['balance']:,} so'm"])
+            bt = Table(bal_data, colWidths=[10*cm, 8*cm])
+            bt.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), rl_colors.HexColor('#0f2044')),
+                ('TEXTCOLOR', (0,0), (-1,0), rl_colors.white),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 9),
+                ('ROWBACKGROUNDS', (0,1), (-1,-1), [rl_colors.HexColor('#f0f7ff'), rl_colors.white]),
+                ('GRID', (0,0), (-1,-1), 0.4, rl_colors.HexColor('#dee4f0')),
+                ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+                ('PADDING', (0,0), (-1,-1), 7),
+                ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+            ]))
+            story.append(bt)
+            story.append(Spacer(1, 12))
+
+            # Xarajatlar
+            story.append(Paragraph(f"Xarajatlar ({len(expenses)} ta, jami: {total_exp:,} so'm)",
+                ParagraphStyle('h2', parent=styles['Normal'], fontSize=11,
+                               fontName='Helvetica-Bold', spaceAfter=6)))
+            exp_data = [["#", "Sana", "Kompaniya", "Direktor", "Summa", "Izoh"]]
+            for i, exp in enumerate(expenses, 1):
+                desc = str(exp['description'] or '')[:30]
+                exp_data.append([str(i), str(exp['created_at'])[:16],
+                                  exp['company'], exp['director'] or '—',
+                                  f"{exp['amount']:,}", desc])
+            exp_data.append(["", "", "", "JAMI", f"{total_exp:,}", ""])
+            et = Table(exp_data, colWidths=[0.8*cm, 3.2*cm, 3.5*cm, 3*cm, 3*cm, 4.5*cm])
+            et.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), rl_colors.HexColor('#7f1d1d')),
+                ('TEXTCOLOR', (0,0), (-1,0), rl_colors.white),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('ROWBACKGROUNDS', (0,1), (-1,-2), [rl_colors.HexColor('#fff5f5'), rl_colors.white]),
+                ('BACKGROUND', (0,-1), (-1,-1), rl_colors.HexColor('#ffe4e4')),
+                ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+                ('TEXTCOLOR', (4,-1), (4,-1), rl_colors.HexColor('#dc2626')),
+                ('GRID', (0,0), (-1,-1), 0.4, rl_colors.HexColor('#fecaca')),
+                ('ALIGN', (4,0), (4,-1), 'RIGHT'),
+                ('ALIGN', (0,0), (0,-1), 'CENTER'),
+                ('PADDING', (0,0), (-1,-1), 5),
+                ('FONTNAME', (0,1), (-1,-2), 'Helvetica'),
+            ]))
+            story.append(et)
+            doc.build(story)
+            pbuf.seek(0)
+            fname = f"hisobot_{date_from or 'barchasi'}_{comp_label[:15]}.pdf"
+            send_telegram_file_direct(pbuf.read(), fname, f"📄 PDF | {period_label} | {comp_label}")
+
+        return jsonify({'ok': True, 'message': f"✅ Telegram ga yuborildi! ({len(expenses)} ta xarajat)"})
+
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'message': f"❌ Xatolik: {str(e)}"})
+
+
+def send_telegram_file_direct(file_bytes, filename, caption):
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument",
+            data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption},
+            files={"document": (filename, file_bytes)},
+            timeout=30
+        )
+    except Exception as e:
+        print("Fayl yuborish xato:", e)
 
 
 # ================= PDF HISOBOTLAR =================

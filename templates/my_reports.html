@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hisobotim | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--accent2:#00d4aa;--danger:#ef4444;--success:#16a34a;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);min-height:100vh;display:flex;flex-direction:column;padding:28px 16px;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:36px}
+        .sidebar-logo .icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .sidebar-logo .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;line-height:1.3}
+        .sidebar-logo .brand span{display:block;font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.06em}
+        .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);padding:0 12px;margin:20px 0 8px}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px}
+        .sidebar a:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+        .sidebar a.active{background:linear-gradient(135deg,rgba(59,110,246,0.25),rgba(0,212,170,0.15));color:white;border-left:2px solid var(--accent2)}
+        .sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px}
+        .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04)}
+        .user-av{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .user-info .name{font-size:13px;font-weight:600;color:white}
+        .user-info .role{font-size:11px;color:rgba(255,255,255,0.35)}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:32px}
+        .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+        .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+        .page-title span{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif}
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+        .stat{background:var(--card);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid transparent}
+        .stat.blue{border-left-color:var(--accent)}.stat.red{border-left-color:var(--danger)}
+        .stat.green{border-left-color:var(--success)}.stat.yellow{border-left-color:#f59e0b}
+        .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+        .stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800}
+        .stat-sub{font-size:11px;color:var(--muted);margin-top:3px}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+        .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:22px}
+        .card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:#f8fafc;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:10px 12px;text-align:left;border-bottom:1.5px solid var(--border)}
+        td{padding:11px 12px;border-bottom:1px solid var(--border)}
+        tr:hover td{background:#f8fafc}
+        tr:last-child td{border-bottom:none}
+        .bar-wrap{background:#f0f4ff;border-radius:6px;height:8px;overflow:hidden;margin-top:4px}
+        .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+        .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+        .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+        .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+        @media(max-width:768px){
+            .hamburger{display:flex}.sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}.overlay.open{display:block}
+            .main{margin-left:0;padding:20px;padding-top:70px}
+            .stats{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+<button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('expenses') }}">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}">👷 Ishchilar</a>
+    <a href="{{ url_for('my_reports') }}" class="active">📊 Hisobotim</a>
+    <a href="{{ url_for('profile') }}">👤 Profilim</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-av">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+<main class="main">
+    <div class="topbar">
+        <div class="page-title">📊 Hisobotim <span>Kompaniya moliyaviy tahlili</span></div>
+        <a href="{{ url_for('dashboard') }}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--text);text-decoration:none;">← Dashboard</a>
+    </div>
+
+    <!-- STATISTIKA -->
+    <div class="stats">
+        <div class="stat green">
+            <div class="stat-label">Joriy balans</div>
+            <div class="stat-val">{{ "{:,}".format(balance) }}</div>
+            <div class="stat-sub">so'm</div>
+        </div>
+        <div class="stat red">
+            <div class="stat-label">Jami xarajat</div>
+            <div class="stat-val">{{ "{:,}".format(total_all) }}</div>
+            <div class="stat-sub">so'm</div>
+        </div>
+        <div class="stat yellow">
+            <div class="stat-label">Bu oylik</div>
+            <div class="stat-val">{{ "{:,}".format(total_month) }}</div>
+            <div class="stat-sub">so'm</div>
+        </div>
+        <div class="stat blue">
+            <div class="stat-label">Bugungi</div>
+            <div class="stat-val">{{ "{:,}".format(total_today) }}</div>
+            <div class="stat-sub">so'm</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- OYLIK GRAFIK -->
+        <div class="card">
+            <div class="card-title">📈 Oylik xarajatlar (6 oy)</div>
+            <canvas id="monthChart" height="200"></canvas>
+        </div>
+
+        <!-- TOP XARAJATLAR -->
+        <div class="card">
+            <div class="card-title">🏆 Eng ko'p xarajat turlari</div>
+            {% if top_expenses %}
+            {% set max_val = top_expenses[0][1] %}
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                {% for exp in top_expenses %}
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                        <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%;">{{ exp[0] or 'Noma\'lum' }}</span>
+                        <span style="font-weight:700;color:var(--danger);flex-shrink:0;">{{ "{:,}".format(exp[1]) }} so'm</span>
+                    </div>
+                    <div class="bar-wrap">
+                        <div class="bar-fill" style="width:{{ (exp[1] / max_val * 100)|int }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:var(--muted);text-align:center;padding:20px;">Ma'lumot yo'q</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SO'NGI XARAJATLAR -->
+    <div class="card">
+        <div class="card-title">🕐 So'nggi xarajatlar</div>
+        {% if recent %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Sana</th>
+                    <th>Summa</th>
+                    <th>Izoh</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in recent %}
+                <tr>
+                    <td style="color:var(--muted);">{{ loop.index }}</td>
+                    <td style="color:var(--muted);font-size:12px;">{{ exp[2][:16] if exp[2] else '—' }}</td>
+                    <td style="font-weight:700;color:var(--danger);">-{{ "{:,}".format(exp[0]) }} so'm</td>
+                    <td>{{ exp[1] or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p style="color:var(--muted);text-align:center;padding:30px;">Hozircha xarajatlar yo'q</p>
+        {% endif %}
+    </div>
+</main>
+
+<script>
+function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open')}
+function closeSidebar(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+
+// Oylik grafik
+const monthLabels = {{ monthly | map(attribute='month') | list | tojson }};
+const monthValues = {{ monthly | map(attribute='total') | list | tojson }};
+
+new Chart(document.getElementById('monthChart'), {
+    type: 'bar',
+    data: {
+        labels: monthLabels,
+        datasets: [{
+            label: "Xarajat (so'm)",
+            data: monthValues,
+            backgroundColor: 'rgba(59,110,246,0.8)',
+            borderRadius: 8,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {display: false},
+            tooltip: {callbacks: {label: ctx => ' ' + ctx.parsed.y.toLocaleString() + " so'm"}}
+        },
+        scales: {
+            y: {grid: {color: 'rgba(0,0,0,0.05)'}, ticks: {callback: v => v.toLocaleString()}},
+            x: {grid: {display: false}}
+        }
+    }
+});
+</script>
+</body>
+</html>

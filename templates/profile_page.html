@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profilim | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--accent2:#00d4aa;--danger:#ef4444;--success:#16a34a;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);min-height:100vh;display:flex;flex-direction:column;padding:28px 16px;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:36px}
+        .sidebar-logo .icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .sidebar-logo .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;line-height:1.3}
+        .sidebar-logo .brand span{display:block;font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.06em}
+        .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);padding:0 12px;margin:20px 0 8px}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px}
+        .sidebar a:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+        .sidebar a.active{background:linear-gradient(135deg,rgba(59,110,246,0.25),rgba(0,212,170,0.15));color:white;border-left:2px solid var(--accent2)}
+        .sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px}
+        .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04)}
+        .user-avatar-sm{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .user-info .name{font-size:13px;font-weight:600;color:white}
+        .user-info .role{font-size:11px;color:rgba(255,255,255,0.35)}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:32px}
+        .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+        .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+        .page-title span{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif}
+        .back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--text);text-decoration:none;box-shadow:var(--shadow)}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+        .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:24px;margin-bottom:20px}
+        .card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+        /* Profile hero */
+        .profile-hero{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:20px;padding:28px;margin-bottom:20px;display:flex;align-items:center;gap:20px;color:white}
+        .avatar-big{width:72px;height:72px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0}
+        .hero-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+        .hero-sub{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
+        .hero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,212,170,0.2);border:1px solid rgba(0,212,170,0.4);color:#00d4aa;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;margin-top:8px}
+        /* Stats */
+        .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+        .stat-box{background:var(--card);border-radius:14px;padding:18px;box-shadow:var(--shadow);text-align:center}
+        .stat-box .val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px}
+        .stat-box .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+        /* Form */
+        .field{margin-bottom:14px}
+        .field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px}
+        .field input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;transition:border .2s}
+        .field input:focus{border-color:var(--accent)}
+        .btn-save{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+        .alert{padding:12px 16px;border-radius:10px;margin-bottom:16px;font-weight:500;font-size:14px}
+        .alert-error{background:#fee2e2;color:#dc2626}
+        .alert-success{background:#dcfce7;color:#16a34a}
+        .password-wrap{position:relative}
+        .password-wrap input{padding-right:44px}
+        .eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)}
+        /* Mobile */
+        .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+        .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+        .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+        @media(max-width:768px){
+            .hamburger{display:flex}.sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}.overlay.open{display:block}
+            .main{margin-left:0;padding:20px;padding-top:70px}
+            .grid-2,.stats-row{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+<button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    {% if session.get("role") == "admin" %}
+    <div class="nav-section">Boshqaruv</div>
+    <a href="{{ url_for('admin_companies') }}">🏢 Kompaniyalar</a>
+    <a href="{{ url_for('admin_directors') }}">👔 Direktorlar</a>
+    <a href="{{ url_for('admin_expenses') }}">💸 Xarajatlar</a>
+    <a href="{{ url_for('admin_balances') }}">💰 Balans</a>
+    <a href="{{ url_for('admin_reports') }}">📈 Hisobotlar</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('profile') }}" class="active">👤 Profilim</a>
+    {% else %}
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('expenses') }}">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}">👷 Ishchilar</a>
+    <a href="{{ url_for('my_reports') }}">📊 Hisobotim</a>
+    <a href="{{ url_for('profile') }}" class="active">👤 Profilim</a>
+    {% endif %}
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar-sm">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+<main class="main">
+    <div class="topbar">
+        <div class="page-title">👤 Profilim <span>Shaxsiy ma'lumotlar va sozlamalar</span></div>
+        <a href="{{ url_for('dashboard') }}" class="back-btn">← Dashboard</a>
+    </div>
+
+    <!-- HERO -->
+    <div class="profile-hero">
+        <div class="avatar-big">{% if session.get('role') == 'admin' %}👑{% else %}👔{% endif %}</div>
+        <div>
+            <div class="hero-name">{{ user.username }}</div>
+            <div class="hero-sub">🏢 {{ company_name }}</div>
+            <div class="hero-badge">{% if session.get('role') == 'admin' %}👑 Admin{% else %}✅ Director{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- STATISTIKA -->
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="val" style="color:var(--danger);">{{ "{:,}".format(total_exp) }}</div>
+            <div class="lbl">Jami xarajat (so'm)</div>
+        </div>
+        <div class="stat-box">
+            <div class="val" style="color:var(--accent);">{{ "{:,}".format(month_exp) }}</div>
+            <div class="lbl">Bu oylik (so'm)</div>
+        </div>
+        <div class="stat-box">
+            <div class="val" style="color:var(--success);">{{ exp_count }}</div>
+            <div class="lbl">Jami operatsiya</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- MA'LUMOTLAR -->
+        <div class="card">
+            <div class="card-title">📋 Ma'lumotlar</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg);border-radius:10px;">
+                    <span style="color:var(--muted);font-size:13px;">👤 Login</span>
+                    <span style="font-weight:700;font-size:13px;">{{ user.username }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg);border-radius:10px;">
+                    <span style="color:var(--muted);font-size:13px;">🏢 Kompaniya</span>
+                    <span style="font-weight:700;font-size:13px;">{{ company_name }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg);border-radius:10px;">
+                    <span style="color:var(--muted);font-size:13px;">🎭 Rol</span>
+                    <span style="font-weight:700;font-size:13px;color:var(--accent);">{{ session.get('role')|capitalize }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg);border-radius:10px;">
+                    <span style="color:var(--muted);font-size:13px;">📅 Ro'yxatdan o'tgan</span>
+                    <span style="font-weight:600;font-size:13px;">{{ user.created_at or '—' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAROL O'ZGARTIRISH -->
+        <div class="card">
+            <div class="card-title">🔐 Parol o'zgartirish</div>
+            {% if error %}<div class="alert alert-error">⚠️ {{ error }}</div>{% endif %}
+            {% if success %}<div class="alert alert-success">✅ {{ success }}</div>{% endif %}
+            <form method="POST">
+                <input type="hidden" name="action" value="change_password">
+                <div class="field">
+                    <label>Eski parol</label>
+                    <div class="password-wrap">
+                        <input type="password" name="old_password" id="oldPass" placeholder="••••••••" required>
+                        <button type="button" class="eye-btn" onclick="togglePass('oldPass')">👁</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Yangi parol</label>
+                    <div class="password-wrap">
+                        <input type="password" name="new_password" id="newPass" placeholder="Kamida 6 ta belgi" required>
+                        <button type="button" class="eye-btn" onclick="togglePass('newPass')">👁</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Yangi parolni tasdiqlang</label>
+                    <div class="password-wrap">
+                        <input type="password" name="confirm_password" id="confPass" placeholder="••••••••" required>
+                        <button type="button" class="eye-btn" onclick="togglePass('confPass')">👁</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-save">🔐 Parolni yangilash</button>
+            </form>
+        </div>
+    </div>
+</main>
+<script>
+function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open')}
+function closeSidebar(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+function togglePass(id){const i=document.getElementById(id);i.type=i.type==='password'?'text':'password'}
+</script>
+</body>
+</html>
