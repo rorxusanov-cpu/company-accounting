@@ -151,66 +151,95 @@ def send_telegram_file(file_bytes, filename, caption):
         print("Fayl yuborish xato:", e)
 
 
+def fmt_money(amount):
+    """Summani chiroyli ko'rsatish: 1500000 → 1.5 mln"""
+    if amount >= 1_000_000:
+        return f"{amount/1_000_000:.1f} mln so'm"
+    elif amount >= 1_000:
+        return f"{amount/1_000:.0f} ming so'm"
+    return f"{amount:,} so'm"
+
+def progress_bar(current, total, length=10):
+    """Progress bar: ████░░░░░░ 60%"""
+    if total <= 0:
+        return "░" * length + " 0%"
+    pct = min(current / total, 1.0)
+    filled = int(pct * length)
+    bar = "█" * filled + "░" * (length - filled)
+    return f"{bar} {int(pct*100)}%"
+
 def send_daily_telegram(data):
-    # Kompaniyalar qatori
+    today_dt = datetime.now()
+    weekdays = ["Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba","Yakshanba"]
+    weekday = weekdays[today_dt.weekday()]
+
+    # ── Kompaniyalar bloki ──
     comp_lines = ""
-    for comp in data["companies"]:
-        bal_icon = "🟢" if comp["balance"] > 0 else "🔴"
+    for i, comp in enumerate(data["companies"], 1):
+        bal = comp["balance"]
+        bal_icon = "🟢" if bal > 500_000 else ("🟡" if bal > 0 else "🔴")
+        dir_txt = f" · {comp['director']}" if comp["director"] else ""
         comp_lines += (
-            f"\n{bal_icon} <b>{comp['name']}</b>"
-            f"{'  · 👔 ' + comp['director'] if comp['director'] else ''}\n"
-            f"   💰 Balans: <code>{comp['balance']:,} so'm</code>\n"
-            f"   ☀️ Bugun: <code>{comp['today_exp']:,} so'm</code>\n"
-            f"   📅 Oy: <code>{comp['month_exp']:,} so'm</code>\n"
+            f"\n{bal_icon} <b>{comp['name']}</b>{dir_txt}\n"
+            f"  ├ 💳 Balans:  <code>{fmt_money(bal)}</code>\n"
+            f"  ├ ☀️ Bugun:   <code>{fmt_money(comp['today_exp'])}</code>\n"
+            f"  └ 📅 Bu oy:  <code>{fmt_money(comp['month_exp'])}</code>\n"
         )
 
-    # Gullar qatori
+    # ── Gullar bloki ──
     flower_lines = ""
     if data["flowers_today_total"] > 0:
         for f in data["flowers_today_by_type"]:
             s1 = f["s1"] or 0
             s2 = f["s2"] or 0
+            total = f["total"]
+            bar = progress_bar(s1, total, 8)
             flower_lines += (
-                f"\n🌸 <b>{f['flower_name']}</b>: <code>{f['total']:,} ta</code>"
-                f"  (1-sort: {s1:,} | 2-sort: {s2:,})"
+                f"\n  🌸 <b>{f['flower_name']}</b>  <code>{total:,} ta</code>\n"
+                f"     1-sort: <code>{s1:,}</code>  2-sort: <code>{s2:,}</code>\n"
+                f"     {bar}\n"
             )
         if data["flowers_today_by_company"]:
-            flower_lines += "\n\n🏢 <b>Kompaniya bo'yicha:</b>"
+            flower_lines += "\n  🏢 Kompaniya bo'yicha:\n"
             for fc in data["flowers_today_by_company"]:
-                flower_lines += f"\n   • {fc['company']}: <code>{fc['total']:,} ta</code>"
+                flower_lines += f"     • {fc['company']}: <code>{fc['total']:,} ta</code>\n"
     else:
-        flower_lines = "\n   Bugun terim kiritilmagan"
+        flower_lines = "\n  ⚪️ Bugun terim kiritilmagan\n"
+
+    # ── Xarajatlar bloki ──
+    exp_count = len(data["today_expenses"])
+    exp_icon = "🔴" if data["total_today"] > 1_000_000 else "🟡" if data["total_today"] > 0 else "⚪️"
 
     send_telegram_message(
-        f"╔══════════════════════╗\n"
-        f"║  📊  <b>KUNLIK HISOBOT</b>  📊  ║\n"
-        f"╚══════════════════════╝\n\n"
-        f"📅 <b>Sana:</b> {TODAY}    🕗 <b>Vaqt:</b> 20:00\n\n"
+        f"┌─────────────────────────┐\n"
+        f"│  🌿  <b>KUNLIK HISOBOT</b>  🌿  │\n"
+        f"└─────────────────────────┘\n"
+        f"📅 <b>{TODAY}</b>  •  {weekday}  •  🕗 20:00\n\n"
 
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 <b>MOLIYA</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💳 Jami balans: <code>{data['total_balance']:,} so'm</code>\n"
-        f"☀️ Bugungi xarajat: <code>{data['total_today']:,} so'm</code>\n"
-        f"📅 Oylik xarajat: <code>{data['total_month']:,} so'm</code>\n"
-        f"🏢 Kompaniyalar: <b>{data['companies_count']}</b>  "
-        f"👔 Direktorlar: <b>{data['directors_count']}</b>  "
-        f"👷 Ishchilar: <b>{data['workers_count']}</b>\n\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        f"📊 <b>UMUMIY KO'RSATKICHLAR</b>\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        f"💳 Jami balans   <b><code>{fmt_money(data['total_balance'])}</code></b>\n"
+        f"{exp_icon} Bugun xarajat  <code>{fmt_money(data['total_today'])}</code>\n"
+        f"📅 Oylik xarajat <code>{fmt_money(data['total_month'])}</code>\n"
+        f"🏢 {data['companies_count']} kompaniya  "
+        f"👔 {data['directors_count']} direktor  "
+        f"👷 {data['workers_count']} ishchi\n\n"
 
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"🌸 <b>GULLAR TERIMI</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"☀️ Bugun: <code>{data['flowers_today_total']:,} ta</code>    "
-        f"📅 Bu oy: <code>{data['flowers_month_total']:,} ta</code>"
-        f"{flower_lines}\n\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        f"  ☀️ Bugun:  <b><code>{data['flowers_today_total']:,} ta</code></b>\n"
+        f"  📅 Bu oy: <code>{data['flowers_month_total']:,} ta</code>\n"
+        f"{flower_lines}\n"
 
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"🏢 <b>KOMPANIYALAR</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
         f"{comp_lines}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💸 Bugun <b>{len(data['today_expenses'])}</b> ta xarajat\n"
-        f"📎 Excel va PDF quyida 👇"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        f"💸 Bugun <b>{exp_count}</b> ta xarajat amalga oshirildi\n"
+        f"📎 Excel va PDF fayllar quyida 👇"
     )
 
 

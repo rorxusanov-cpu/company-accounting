@@ -515,6 +515,23 @@
             <!-- INFO / AJRATISH -->
             <div>
                 {% if director['company'] %}
+                <!-- PAROLNI YANGILASH -->
+                <div class="section-label" style="margin-bottom:8px;">🔑 Kirish ma'lumotlari</div>
+                <div class="info-box" style="margin-bottom:12px;font-size:13px;line-height:1.7;">
+                    Parolni yangilash — yangi parol avtomatik generatsiya qilinadi
+                    va <strong>Telegram bot</strong> orqali admin ga yuboriladi.
+                </div>
+                <form method="POST" action="{{ url_for('admin_reset_password', director_id=director['id']) }}"
+                      onsubmit="return confirm('Yangi parol yaratilsinmi? Telegram ga yuboriladi.')">
+                    <button type="submit" style="
+                        width:100%;padding:11px 16px;border-radius:10px;
+                        background:#eff6ff;color:#1d4ed8;
+                        border:1.5px solid #bfdbfe;font-size:14px;
+                        font-weight:700;cursor:pointer;margin-bottom:12px;">
+                        🔑 Yangi parol yaratish va yuborish
+                    </button>
+                </form>
+
                 <div class="section-label">⚠️ Kompaniyadan ajratish</div>
                 <div class="info-box" style="margin-bottom:12px;">
                     <strong>{{ director['username'] }}</strong> ni
