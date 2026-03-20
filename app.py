@@ -2097,12 +2097,93 @@ def company_balances():
     conn = get_db()
     c = conn.cursor()
     if session.get('role') == 'admin':
-        c.execute("SELECT name, balance FROM companies ORDER BY balance DESC")
+        c.execute("""
+            SELECT c.id, c.name, c.balance, u.username as director
+            FROM companies c
+            LEFT JOIN users u ON u.company_id=c.id AND u.role='director'
+            ORDER BY c.balance DESC
+        """)
     else:
-        c.execute("SELECT name, balance FROM companies WHERE id=?", (session.get('company_id'),))
-    rows = [{'name': r['name'], 'balance': r['balance']} for r in c.fetchall()]
+        c.execute("""
+            SELECT c.id, c.name, c.balance, u.username as director
+            FROM companies c
+            LEFT JOIN users u ON u.company_id=c.id AND u.role='director'
+            WHERE c.id=?
+        """, (session.get('company_id'),))
+    rows = [{'id': r['id'], 'name': r['name'], 'balance': r['balance'], 'director': r['director'] or '—'} for r in c.fetchall()]
     conn.close()
     return jsonify(rows)
+
+
+@app.route('/api/directors')
+def api_directors():
+    if 'user' not in session or session.get('role') != 'admin':
+        return {'error': 'ruxsat yoq'}, 401
+    from flask import jsonify
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT u.id, u.username, u.created_at,
+               c.name as company, c.id as company_id
+        FROM users u
+        LEFT JOIN companies c ON u.company_id=c.id
+        WHERE u.role='director'
+        ORDER BY u.id DESC
+    """)
+    rows = [{'id': r['id'], 'username': r['username'], 'created_at': r['created_at'] or '',
+             'company': r['company'] or '—', 'company_id': r['company_id']} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route('/api/workers')
+def api_workers():
+    if 'user' not in session or session.get('role') != 'admin':
+        return {'error': 'ruxsat yoq'}, 401
+    from flask import jsonify
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT w.id, w.full_name, w.position, w.status,
+               w.monthly_salary, c.name as company, c.id as company_id
+        FROM workers w
+        LEFT JOIN companies c ON w.company_id=c.id
+        ORDER BY w.id DESC
+    """)
+    rows = [{'id': r['id'], 'full_name': r['full_name'], 'position': r['position'] or '—',
+             'status': r['status'] or 'active', 'monthly_salary': r['monthly_salary'] or 0,
+             'company': r['company'] or '—', 'company_id': r['company_id']} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route('/api/expenses-by-period')
+def api_expenses_by_period():
+    if 'user' not in session or session.get('role') != 'admin':
+        return {'error': 'ruxsat yoq'}, 401
+    from flask import jsonify
+    period = request.args.get('period', 'month')
+    conn = get_db()
+    c = conn.cursor()
+    if period == 'today':
+        condition = "date(e.created_at) = date('now')"
+    else:
+        condition = "strftime('%Y-%m', e.created_at) = strftime('%Y-%m', 'now')"
+    c.execute(f"""
+        SELECT e.amount, e.description, e.created_at, c.name as company, u.username as director
+        FROM expenses e
+        JOIN companies c ON e.company_id = c.id
+        LEFT JOIN users u ON e.user_id = u.id
+        WHERE {condition}
+        ORDER BY e.created_at DESC
+        LIMIT 50
+    """)
+    rows = [{'amount': r['amount'], 'description': r['description'] or '—',
+             'created_at': r['created_at'] or '', 'company': r['company'],
+             'director': r['director'] or '—'} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
 
 # ================= RUN =================
 init_db()  # Gunicorn va oddiy run ikkalasida ham ishlaydi
