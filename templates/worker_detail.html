@@ -92,7 +92,59 @@
             .overlay.open{display:block}
             .main{margin-left:0;padding:20px;padding-top:70px}
         }
-    </style>
+    
+        /* ===== UNIVERSAL MOBIL TUZATMALAR ===== */
+        @media (max-width: 768px) {
+            /* Sidebar */
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); z-index: 150; }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .hamburger { display: flex !important; }
+            .main { margin-left: 0 !important; padding: 16px !important; padding-top: 68px !important; }
+
+            /* Grid'lar */
+            .stats, s { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .grid-2, .form-row { grid-template-columns: 1fr !important; }
+            div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+            /* Jadvallar scroll */
+            .table-wrap, .card, .chart-section { overflow-x: auto !important; }
+            table { min-width: 480px; font-size: 12px !important; }
+            th, td { padding: 8px 10px !important; }
+
+            /* Topbar */
+            .topbar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+            .topbar-right, .profile-actions { flex-wrap: wrap !important; gap: 6px !important; }
+
+            /* Formalar */
+            .form-row { grid-template-columns: 1fr !important; }
+            .field input, .field select, .field textarea { font-size: 16px !important; }
+
+            /* Tugmalar */
+            .btn-row { flex-direction: column !important; }
+            .btn-add { width: 100% !important; }
+
+            /* Profillar */
+            .profile-card { flex-direction: column !important; }
+            .profile-left { flex-direction: column !important; text-align: center !important; }
+
+            /* Stat kartalar */
+            .stat-card, .stat { padding: 14px 12px !important; }
+            .stat-val, .stat-value { font-size: 18px !important; }
+
+            /* Page title */
+            .page-title { font-size: 18px !important; }
+
+            /* Chart */
+            canvas { max-height: 200px !important; }
+        }
+
+        @media (max-width: 480px) {
+            .stats, s { grid-template-columns: 1fr 1fr !important; }
+            .stat-card .stat-value { font-size: 16px !important; }
+            .profile-info h2 { font-size: 16px !important; }
+        }
+        </style>
 </head>
 <body>
 

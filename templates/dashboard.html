@@ -420,6 +420,59 @@
             .main { margin-left: 0 !important; padding: 20px; padding-top: 70px !important; }
         }
 
+        
+        /* ===== UNIVERSAL MOBIL TUZATMALAR ===== */
+        @media (max-width: 768px) {
+            .chart-grid-2 { grid-template-columns: 1fr !important; }
+            /* Sidebar */
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); z-index: 150; }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .hamburger { display: flex !important; }
+            .main { margin-left: 0 !important; padding: 16px !important; padding-top: 68px !important; }
+
+            /* Grid'lar */
+            .stats, s { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .grid-2, .form-row { grid-template-columns: 1fr !important; }
+            div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+            /* Jadvallar scroll */
+            .table-wrap, .card, .chart-section { overflow-x: auto !important; }
+            table { min-width: 480px; font-size: 12px !important; }
+            th, td { padding: 8px 10px !important; }
+
+            /* Topbar */
+            .topbar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+            .topbar-right, .profile-actions { flex-wrap: wrap !important; gap: 6px !important; }
+
+            /* Formalar */
+            .form-row { grid-template-columns: 1fr !important; }
+            .field input, .field select, .field textarea { font-size: 16px !important; }
+
+            /* Tugmalar */
+            .btn-row { flex-direction: column !important; }
+            .btn-add { width: 100% !important; }
+
+            /* Profillar */
+            .profile-card { flex-direction: column !important; }
+            .profile-left { flex-direction: column !important; text-align: center !important; }
+
+            /* Stat kartalar */
+            .stat-card, .stat { padding: 14px 12px !important; }
+            .stat-val, .stat-value { font-size: 18px !important; }
+
+            /* Page title */
+            .page-title { font-size: 18px !important; }
+
+            /* Chart */
+            canvas { max-height: 200px !important; }
+        }
+
+        @media (max-width: 480px) {
+            .stats, s { grid-template-columns: 1fr 1fr !important; }
+            .stat-card .stat-value { font-size: 16px !important; }
+            .profile-info h2 { font-size: 16px !important; }
+        }
         </style>
 </head>
 <body>
@@ -523,7 +576,83 @@
         </div>
     </div>
 
-    <!-- CHART -->
+    {% if session.get('role') == 'admin' %}
+    <!-- QO'SHIMCHA STATISTIKA -->
+    <div class="stats" style="margin-bottom:20px;">
+        <div class="stat-card" style="border-left:3px solid #8b5cf6;">
+            <div class="stat-icon">👔</div>
+            <div class="stat-label">Direktorlar</div>
+            <div class="stat-value">{{ directors_count }}</div>
+        </div>
+        <div class="stat-card" style="border-left:3px solid #00d4aa;">
+            <div class="stat-icon">👷</div>
+            <div class="stat-label">Ishchilar</div>
+            <div class="stat-value">{{ workers_count }}</div>
+        </div>
+        <div class="stat-card" style="border-left:3px solid #f59e0b;">
+            <div class="stat-icon">📅</div>
+            <div class="stat-label">Bu oylik xarajat</div>
+            <div class="stat-value" style="font-size:18px;">{{ "{:,}".format(month_expenses) }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">so'm</div>
+        </div>
+        <div class="stat-card" style="border-left:3px solid #ef4444;">
+            <div class="stat-icon">☀️</div>
+            <div class="stat-label">Bugungi xarajat</div>
+            <div class="stat-value" style="font-size:18px;">{{ "{:,}".format(today_expenses) }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">so'm</div>
+        </div>
+    </div>
+
+    <!-- 2 TA GRAFIK YON-YON -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;" class="chart-grid-2">
+        <div class="chart-section" style="margin-bottom:0;padding:20px;">
+            <div class="chart-header"><div class="chart-title">🏆 Top kompaniyalar</div></div>
+            {% if top_companies %}
+            <canvas id="barChart" height="200"></canvas>
+            {% else %}
+            <div class="empty-chart">📭 Ma'lumot yo'q</div>
+            {% endif %}
+        </div>
+        <div class="chart-section" style="margin-bottom:0;padding:20px;">
+            <div class="chart-header"><div class="chart-title">🍩 Balans vs Xarajat</div></div>
+            <canvas id="donutChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- SO'NGI XARAJATLAR JADVALI -->
+    {% if recent_expenses %}
+    <div class="chart-section" style="margin-bottom:20px;padding:20px;">
+        <div class="chart-header" style="margin-bottom:14px;">
+            <div class="chart-title">🕐 So'nggi xarajatlar</div>
+            <a href="{{ url_for('admin_expenses') }}" style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:600;">Barchasi →</a>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+                <tr style="border-bottom:2px solid var(--border);">
+                    <th style="text-align:left;padding:8px;color:var(--muted);font-size:11px;text-transform:uppercase;">Kompaniya</th>
+                    <th style="text-align:left;padding:8px;color:var(--muted);font-size:11px;text-transform:uppercase;">Direktor</th>
+                    <th style="text-align:left;padding:8px;color:var(--muted);font-size:11px;text-transform:uppercase;">Izoh</th>
+                    <th style="text-align:right;padding:8px;color:var(--muted);font-size:11px;text-transform:uppercase;">Summa</th>
+                    <th style="text-align:right;padding:8px;color:var(--muted);font-size:11px;text-transform:uppercase;">Sana</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in recent_expenses %}
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:9px 8px;font-weight:600;">{{ e[3] }}</td>
+                    <td style="padding:9px 8px;color:var(--muted);">{{ e[4] or '—' }}</td>
+                    <td style="padding:9px 8px;color:var(--muted);">{{ (e[1][:28] + '...') if e[1] and e[1]|length > 28 else (e[1] or '—') }}</td>
+                    <td style="padding:9px 8px;text-align:right;font-weight:700;color:#dc2626;">-{{ "{:,}".format(e[0]) }}</td>
+                    <td style="padding:9px 8px;text-align:right;color:var(--muted);font-size:12px;">{{ e[2][:16] if e[2] else '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ASOSIY GRAFIK -->
     <div class="chart-section">
         <div class="chart-header">
             <div class="chart-title">📉 Xarajatlar dinamikasi</div>
@@ -588,6 +717,74 @@ new Chart(document.getElementById("chart"), {
         scales: {
             x: { grid: { color: "rgba(0,0,0,0.04)" }, ticks: { color: "#64748b", font: { size: 12 } } },
             y: { grid: { color: "rgba(0,0,0,0.04)" }, ticks: { color: "#64748b", font: { size: 12 }, callback: v => v.toLocaleString() }, beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endif %}
+
+{% if session.get('role') == 'admin' and top_companies %}
+<script>
+// BAR CHART — top kompaniyalar
+const barLabels = {{ top_companies | map(attribute=0) | list | tojson }};
+const barValues = {{ top_companies | map(attribute=2) | list | tojson }};
+
+new Chart(document.getElementById("barChart"), {
+    type: "bar",
+    data: {
+        labels: barLabels,
+        datasets: [{
+            label: "Xarajat (so'm)",
+            data: barValues,
+            backgroundColor: [
+                "rgba(59,110,246,0.8)",
+                "rgba(0,212,170,0.8)",
+                "rgba(239,68,68,0.8)",
+                "rgba(245,158,11,0.8)",
+                "rgba(139,92,246,0.8)"
+            ],
+            borderRadius: 8,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: { label: ctx => " " + ctx.parsed.y.toLocaleString() + " so'm" }
+            }
+        },
+        scales: {
+            y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { callback: v => v.toLocaleString() } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// DONUT CHART — balans vs xarajat
+new Chart(document.getElementById("donutChart"), {
+    type: "doughnut",
+    data: {
+        labels: ["Balans", "Xarajatlar"],
+        datasets: [{
+            data: [{{ total_balance }}, {{ total_expenses }}],
+            backgroundColor: ["rgba(0,212,170,0.85)", "rgba(239,68,68,0.85)"],
+            borderWidth: 0,
+            hoverOffset: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        cutout: "65%",
+        plugins: {
+            legend: {
+                position: "bottom",
+                labels: { padding: 16, font: { size: 12 } }
+            },
+            tooltip: {
+                callbacks: { label: ctx => " " + ctx.parsed.toLocaleString() + " so'm" }
+            }
         }
     }
 });

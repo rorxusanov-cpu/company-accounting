@@ -38,6 +38,56 @@ def send_telegram_message(text):
         print("Telegram xato:", e)
 
 
+def tg_expense(company_name, director, amount, description, created_at, balance=None):
+    bal_line = f"\n💳 <b>Qolgan balans:</b> <code>{balance:,} so'm</code>" if balance is not None else ""
+    send_telegram_message(
+        f"╔══════════════════════╗\n"
+        f"║  💸  <b>YANGI XARAJAT</b>  💸  ║\n"
+        f"╚══════════════════════╝\n\n"
+        f"🏢 <b>Kompaniya:</b> {company_name}\n"
+        f"👔 <b>Direktor:</b> {director}\n"
+        f"💰 <b>Summa:</b> <code>{amount:,} so'm</code>\n"
+        f"📝 <b>Izoh:</b> {description}"
+        f"{bal_line}\n"
+        f"🕒 <b>Sana:</b> {created_at}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+
+def tg_salary(company_name, director, worker_name, amount, note, created_at, balance=None):
+    bal_line = f"\n💳 <b>Qolgan balans:</b> <code>{balance:,} so'm</code>" if balance is not None else ""
+    send_telegram_message(
+        f"╔══════════════════════╗\n"
+        f"║  💼  <b>OYLIK MAOSH</b>  💼  ║\n"
+        f"╚══════════════════════╝\n\n"
+        f"🏢 <b>Kompaniya:</b> {company_name}\n"
+        f"👔 <b>Direktor:</b> {director}\n"
+        f"👷 <b>Ishchi:</b> {worker_name}\n"
+        f"💰 <b>Summa:</b> <code>{amount:,} so'm</code>\n"
+        f"📝 <b>Izoh:</b> {note or '—'}"
+        f"{bal_line}\n"
+        f"🕒 <b>Sana:</b> {created_at}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+
+def tg_advance(company_name, director, worker_name, amount, note, created_at, balance=None):
+    bal_line = f"\n💳 <b>Qolgan balans:</b> <code>{balance:,} so'm</code>" if balance is not None else ""
+    send_telegram_message(
+        f"╔══════════════════════╗\n"
+        f"║  🏧  <b>AVANS BERILDI</b>  🏧  ║\n"
+        f"╚══════════════════════╝\n\n"
+        f"🏢 <b>Kompaniya:</b> {company_name}\n"
+        f"👔 <b>Direktor:</b> {director}\n"
+        f"👷 <b>Ishchi:</b> {worker_name}\n"
+        f"💰 <b>Summa:</b> <code>{amount:,} so'm</code>\n"
+        f"📝 <b>Izoh:</b> {note or '—'}"
+        f"{bal_line}\n"
+        f"🕒 <b>Sana:</b> {created_at}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+
 # ================= DATABASE =================
 def get_db():
     # Render da /data papkasi persistent disk, localda oddiy fayl
@@ -147,6 +197,22 @@ def init_db():
         pass
     try:
         c.execute("ALTER TABLE workers ADD COLUMN monthly_salary INTEGER DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE expenses ADD COLUMN is_edited INTEGER DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE expenses ADD COLUMN edited_at TEXT")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE expenses ADD COLUMN original_amount INTEGER")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE expenses ADD COLUMN original_description TEXT")
     except:
         pass
 
@@ -264,6 +330,14 @@ def dashboard():
     values = []
     warning = None
 
+    # Qo'shimcha statistika o'zgaruvchilari
+    top_companies = []
+    recent_expenses = []
+    workers_count = 0
+    month_expenses = 0
+    today_expenses = 0
+    directors_count = 0
+
     # ================= ADMIN =================
     if role == "admin":
         c.execute("SELECT IFNULL(SUM(balance),0) FROM companies")
@@ -274,6 +348,39 @@ def dashboard():
 
         c.execute("SELECT COUNT(*) FROM companies")
         companies_count = c.fetchone()[0]
+
+        c.execute("SELECT COUNT(*) FROM users WHERE role='director'")
+        directors_count = c.fetchone()[0]
+
+        c.execute("SELECT COUNT(*) FROM workers")
+        workers_count = c.fetchone()[0]
+
+        # Bu oylik xarajat
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m', created_at)=strftime('%Y-%m','now')")
+        month_expenses = c.fetchone()[0]
+
+        # Bugungi xarajat
+        c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE date(created_at)=date('now')")
+        today_expenses = c.fetchone()[0]
+
+        # Top 5 kompaniya (eng ko'p xarajat)
+        c.execute("""
+            SELECT c.name, c.balance, IFNULL(SUM(e.amount),0) as exp
+            FROM companies c
+            LEFT JOIN expenses e ON e.company_id=c.id
+            GROUP BY c.id ORDER BY exp DESC LIMIT 5
+        """)
+        top_companies = c.fetchall()
+
+        # So'nggi 7 ta xarajat
+        c.execute("""
+            SELECT e.amount, e.description, e.created_at, c.name, u.username
+            FROM expenses e
+            JOIN companies c ON e.company_id=c.id
+            LEFT JOIN users u ON e.user_id=u.id
+            ORDER BY e.created_at DESC LIMIT 7
+        """)
+        recent_expenses = c.fetchall()
 
         profit = total_balance
 
@@ -423,6 +530,12 @@ def dashboard():
         total_expenses=total_expenses,
         profit=profit,
         companies_count=companies_count,
+        directors_count=directors_count,
+        workers_count=workers_count,
+        month_expenses=month_expenses,
+        today_expenses=today_expenses,
+        top_companies=top_companies,
+        recent_expenses=recent_expenses,
         labels=labels,
         values=values,
         warning=warning
@@ -549,21 +662,17 @@ def expenses():
 
         conn.commit()
 
-        message = f"""
-<b>💸 Yangi xarajat</b>
-🏢 Kompaniya: <b>{company_name}</b>
-👔 Direktor: <b>{session['user']}</b>
-💰 Summa: <b>{amount:,} so'm</b>
-📝 Izoh: {description}
-🕒 Sana: {created_at}
-"""
-        send_telegram_message(message)
+        # Yangilangan balansni olamiz
+        c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+        new_bal = c.fetchone()
+        tg_expense(company_name, session['user'], amount, description, created_at,
+                   balance=new_bal["balance"] if new_bal else None)
 
         conn.close()
         return redirect(url_for("expenses"))
 
     c.execute("""
-        SELECT amount, description, created_at
+        SELECT id, amount, description, created_at, is_edited, edited_at, original_amount, original_description
         FROM expenses
         WHERE company_id=?
         ORDER BY id DESC
@@ -584,6 +693,85 @@ def expenses():
         balance=balance,
         error=None
     )
+
+
+# ================= XARAJAT TAHRIRLASH (DIRECTOR) =================
+@app.route("/expenses/edit/<int:expense_id>", methods=["GET", "POST"])
+def edit_expense(expense_id):
+    if "user" not in session or session.get("role") != "director":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # Direktorning kompaniyasini DB dan olamiz
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else None
+
+    c.execute("SELECT * FROM expenses WHERE id=? AND company_id=?", (expense_id, company_id))
+    expense = c.fetchone()
+    if not expense:
+        conn.close()
+        return "Xarajat topilmadi", 404
+
+    if request.method == "POST":
+        new_amount = int(request.form.get("amount", expense["amount"]) or expense["amount"])
+        new_desc = request.form.get("description", expense["description"]).strip()
+        edited_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Farqni balansga qaytaramiz yoki yechamiz
+        diff = new_amount - expense["amount"]
+        c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+        bal = c.fetchone()
+
+        if diff > 0 and bal["balance"] < diff:
+            conn.close()
+            return redirect(url_for("expenses"))
+
+        # Asl qiymatlarni saqlaymiz (agar birinchi tahrirlash bo'lsa)
+        orig_amount = expense["original_amount"] if expense["is_edited"] else expense["amount"]
+        orig_desc = expense["original_description"] if expense["is_edited"] else expense["description"]
+
+        c.execute("""
+            UPDATE expenses SET
+                amount=?, description=?, is_edited=1,
+                edited_at=?, original_amount=?, original_description=?
+            WHERE id=?
+        """, (new_amount, new_desc, edited_at, orig_amount, orig_desc, expense_id))
+
+        # Balansni farqqa qarab yangilaymiz
+        if diff != 0:
+            c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (diff, company_id))
+
+        conn.commit()
+
+        # Admin ga Telegram xabari
+        c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+        comp = c.fetchone()
+        c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+        new_bal = c.fetchone()
+
+        send_telegram_message(
+            f"╔══════════════════════╗\n"
+            f"║  ✏️  <b>XARAJAT TAHRIRLANDI</b>  ✏️  ║\n"
+            f"╚══════════════════════╝\n\n"
+            f"🏢 <b>Kompaniya:</b> {comp['name'] if comp else '—'}\n"
+            f"👔 <b>Direktor:</b> {session['user']}\n"
+            f"📋 <b>Asl izoh:</b> {orig_desc}\n"
+            f"💰 <b>Asl summa:</b> <code>{orig_amount:,} so'm</code>\n"
+            f"📝 <b>Yangi izoh:</b> {new_desc}\n"
+            f"💰 <b>Yangi summa:</b> <code>{new_amount:,} so'm</code>\n"
+            f"💳 <b>Qolgan balans:</b> <code>{new_bal['balance']:,} so'm</code>\n"
+            f"🕒 <b>Sana:</b> {edited_at}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━"
+        )
+
+        conn.close()
+        return redirect(url_for("expenses"))
+
+    conn.close()
+    return render_template("edit_expense.html", expense=expense)
 
 
 # ================= ADMIN : DIRECTOR DETAIL =================
@@ -1374,7 +1562,10 @@ def workers():
             amount = int(request.form.get("amount", 0))
             note = request.form.get("note", "").strip()
 
-            # Balansni tekshirish
+            c.execute("SELECT full_name FROM workers WHERE id=?", (worker_id,))
+            w_row = c.fetchone()
+            worker_name = w_row["full_name"] if w_row else "Ishchi"
+
             c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
             bal = c.fetchone()
             if not bal or bal["balance"] < amount:
@@ -1382,12 +1573,23 @@ def workers():
             elif amount <= 0:
                 error = "Summa 0 dan katta bo'lishi kerak!"
             else:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 c.execute(
                     "INSERT INTO salaries (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
-                    (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                    (worker_id, company_id, amount, note, now_str)
                 )
                 c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                exp_desc = f"Oylik maosh — {worker_name}" + (f": {note}" if note else "")
+                c.execute("INSERT INTO expenses (company_id, user_id, amount, description, created_at) VALUES (?,?,?,?,?)",
+                          (company_id, session["user_id"], amount, exp_desc, now_str))
                 conn.commit()
+                # Telegram xabari
+                c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+                comp = c.fetchone()
+                c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+                new_bal = c.fetchone()
+                tg_salary(comp["name"] if comp else "—", session["user"], worker_name, amount, note, now_str,
+                          balance=new_bal["balance"] if new_bal else None)
 
         elif action == "delete":
             worker_id = int(request.form.get("worker_id", 0))
@@ -1422,6 +1624,276 @@ def workers():
 @app.route('/ping')
 def ping():
     return 'pong', 200
+
+
+# ================= PDF HISOBOTLAR =================
+@app.route("/admin/export/pdf/all")
+def export_pdf_all():
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import io
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT c.name, c.balance, IFNULL(SUM(e.amount),0) as total_exp,
+               u.username as director
+        FROM companies c
+        LEFT JOIN expenses e ON e.company_id=c.id
+        LEFT JOIN users u ON u.company_id=c.id AND u.role='director'
+        GROUP BY c.id ORDER BY c.id DESC
+    """)
+    companies = c.fetchall()
+
+    c.execute("""
+        SELECT e.description, e.amount, e.created_at, c.name, u.username, e.is_edited
+        FROM expenses e
+        JOIN companies c ON e.company_id=c.id
+        LEFT JOIN users u ON e.user_id=u.id
+        ORDER BY e.created_at DESC LIMIT 100
+    """)
+    expenses = c.fetchall()
+
+    c.execute("SELECT IFNULL(SUM(balance),0) FROM companies")
+    total_balance = c.fetchone()[0]
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses")
+    total_expenses = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM companies")
+    total_companies = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM users WHERE role='director'")
+    total_directors = c.fetchone()[0]
+
+    conn.close()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            rightMargin=1.5*cm, leftMargin=1.5*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    # SARLAVHA
+    title_style = ParagraphStyle('title', parent=styles['Normal'],
+                                  fontSize=20, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#1e293b'),
+                                  spaceAfter=4)
+    sub_style = ParagraphStyle('sub', parent=styles['Normal'],
+                                fontSize=10, fontName='Helvetica',
+                                textColor=colors.HexColor('#64748b'),
+                                spaceAfter=16)
+
+    story.append(Paragraph("Company Accounting - Umumiy Hisobot", title_style))
+    story.append(Paragraph(f"Sana: {datetime.now().strftime('%Y-%m-%d %H:%M')}", sub_style))
+    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#3b6ef6')))
+    story.append(Spacer(1, 14))
+
+    # UMUMIY STATISTIKA
+    story.append(Paragraph("Umumiy Ko'rsatkichlar", ParagraphStyle('h2', parent=styles['Normal'],
+                  fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'), spaceAfter=8)))
+
+    stat_data = [
+        ["Ko'rsatkich", "Qiymat"],
+        ["Umumiy balans", f"{total_balance:,} so'm"],
+        ["Jami xarajatlar", f"{total_expenses:,} so'm"],
+        ["Kompaniyalar soni", str(total_companies)],
+        ["Direktorlar soni", str(total_directors)],
+    ]
+    stat_table = Table(stat_data, colWidths=[8*cm, 8*cm])
+    stat_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#3b6ef6')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f8fafc')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#f8fafc'), colors.white]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+        ('PADDING', (0,0), (-1,-1), 8),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+    ]))
+    story.append(stat_table)
+    story.append(Spacer(1, 18))
+
+    # KOMPANIYALAR JADVALI
+    story.append(Paragraph("Kompaniyalar", ParagraphStyle('h2', parent=styles['Normal'],
+                  fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'), spaceAfter=8)))
+
+    comp_data = [["#", "Kompaniya", "Direktor", "Balans", "Xarajat"]]
+    for i, row in enumerate(companies, 1):
+        comp_data.append([
+            str(i), str(row[0] or "-"), str(row[3] or "-"),
+            f"{row[1]:,}", f"{row[2]:,}"
+        ])
+
+    comp_table = Table(comp_data, colWidths=[1*cm, 5*cm, 4*cm, 4*cm, 4*cm])
+    comp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#f8fafc'), colors.white]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ALIGN', (3,0), (4,-1), 'RIGHT'),
+        ('PADDING', (0,0), (-1,-1), 7),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+    ]))
+    story.append(comp_table)
+    story.append(Spacer(1, 18))
+
+    # SO'NGI XARAJATLAR
+    story.append(Paragraph("So'nggi 100 ta xarajat", ParagraphStyle('h2', parent=styles['Normal'],
+                  fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'), spaceAfter=8)))
+
+    exp_data = [["#", "Sana", "Kompaniya", "Direktor", "Summa", "Izoh"]]
+    for i, row in enumerate(expenses, 1):
+        desc = str(row[0] or "")[:30] + ("..." if len(str(row[0] or "")) > 30 else "")
+        edited = " (*)" if row[5] else ""
+        exp_data.append([
+            str(i), str(row[2] or "")[:16],
+            str(row[3] or "")[:15], str(row[4] or "-")[:12],
+            f"{row[1]:,}", desc + edited
+        ])
+
+    exp_table = Table(exp_data, colWidths=[0.8*cm, 2.8*cm, 3.5*cm, 2.8*cm, 2.8*cm, 5.3*cm])
+    exp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#dc2626')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#fff5f5'), colors.white]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ALIGN', (4,0), (4,-1), 'RIGHT'),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+    ]))
+    story.append(exp_table)
+
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("(*) — Tahrirlangan xarajat", ParagraphStyle('note', parent=styles['Normal'],
+                  fontSize=8, textColor=colors.HexColor('#94a3b8'))))
+
+    doc.build(story)
+    buf.seek(0)
+
+    fname = f"hisobot_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return Response(buf.read(), mimetype="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@app.route("/admin/export/pdf/company/<int:company_id>")
+def export_pdf_company(company_id):
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    import io
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM companies WHERE id=?", (company_id,))
+    company = c.fetchone()
+    if not company:
+        conn.close()
+        return "Kompaniya topilmadi", 404
+
+    c.execute("""
+        SELECT u.username FROM users u
+        WHERE u.company_id=? AND u.role='director'
+    """, (company_id,))
+    directors = [r[0] for r in c.fetchall()]
+
+    c.execute("""
+        SELECT e.description, e.amount, e.created_at, u.username, e.is_edited
+        FROM expenses e
+        LEFT JOIN users u ON e.user_id=u.id
+        WHERE e.company_id=?
+        ORDER BY e.created_at DESC
+    """, (company_id,))
+    expenses = c.fetchall()
+
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?", (company_id,))
+    total_exp = c.fetchone()[0]
+
+    conn.close()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            rightMargin=1.5*cm, leftMargin=1.5*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph(f"{company['name']} - Hisobot", ParagraphStyle('title', parent=styles['Normal'],
+                  fontSize=18, fontName='Helvetica-Bold', textColor=colors.HexColor('#1e293b'), spaceAfter=4)))
+    story.append(Paragraph(f"Sana: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ParagraphStyle('sub',
+                  parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#64748b'), spaceAfter=14)))
+    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#3b6ef6')))
+    story.append(Spacer(1, 14))
+
+    stat_data = [
+        ["Ko'rsatkich", "Qiymat"],
+        ["Joriy balans", f"{company['balance']:,} so'm"],
+        ["Jami xarajatlar", f"{total_exp:,} so'm"],
+        ["Direktorlar", ", ".join(directors) or "-"],
+        ["Yaratilgan", str(company['created_at'] or "-")],
+    ]
+    stat_table = Table(stat_data, colWidths=[7*cm, 10*cm])
+    stat_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#3b6ef6')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#f8fafc'), colors.white]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('PADDING', (0,0), (-1,-1), 8),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+    ]))
+    story.append(stat_table)
+    story.append(Spacer(1, 18))
+
+    story.append(Paragraph("Barcha xarajatlar", ParagraphStyle('h2', parent=styles['Normal'],
+                  fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'), spaceAfter=8)))
+
+    exp_data = [["#", "Sana", "Direktor", "Summa", "Izoh"]]
+    for i, row in enumerate(expenses, 1):
+        desc = str(row[0] or "")[:35] + ("..." if len(str(row[0] or "")) > 35 else "")
+        exp_data.append([str(i), str(row[2] or "")[:16], str(row[3] or "-"), f"{row[1]:,}", desc])
+
+    exp_table = Table(exp_data, colWidths=[0.8*cm, 3.5*cm, 3.5*cm, 3.5*cm, 6.7*cm])
+    exp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#f8fafc'), colors.white]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ALIGN', (3,0), (3,-1), 'RIGHT'),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+    ]))
+    story.append(exp_table)
+
+    doc.build(story)
+    buf.seek(0)
+
+    fname = f"{company['name'].replace(' ', '_')}_hisobot_{datetime.now().strftime('%Y%m%d')}.pdf"
+    return Response(buf.read(), mimetype="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 # ================= WORKER DETAIL =================
@@ -1484,10 +1956,21 @@ def worker_detail(worker_id):
             elif amount <= 0:
                 error = "Summa 0 dan katta bo'lishi kerak!"
             else:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 c.execute("INSERT INTO advances (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
-                          (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                          (worker_id, company_id, amount, note, now_str))
                 c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                exp_desc = f"Avans — {worker['full_name']}" + (f": {note}" if note else "")
+                c.execute("INSERT INTO expenses (company_id, user_id, amount, description, created_at) VALUES (?,?,?,?,?)",
+                          (company_id, session["user_id"], amount, exp_desc, now_str))
                 conn.commit()
+                # Telegram xabari
+                c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+                comp = c.fetchone()
+                c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+                new_bal = c.fetchone()
+                tg_advance(comp["name"] if comp else "—", session["user"], worker["full_name"], amount, note, now_str,
+                           balance=new_bal["balance"] if new_bal else None)
                 success = "Avans berildi!"
 
         elif action == "pay_salary":
@@ -1500,10 +1983,21 @@ def worker_detail(worker_id):
             elif amount <= 0:
                 error = "Summa 0 dan katta bo'lishi kerak!"
             else:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 c.execute("INSERT INTO salaries (worker_id, company_id, amount, note, created_at) VALUES (?,?,?,?,?)",
-                          (worker_id, company_id, amount, note, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                          (worker_id, company_id, amount, note, now_str))
                 c.execute("UPDATE companies SET balance = balance - ? WHERE id=?", (amount, company_id))
+                exp_desc = f"Oylik maosh — {worker['full_name']}" + (f": {note}" if note else "")
+                c.execute("INSERT INTO expenses (company_id, user_id, amount, description, created_at) VALUES (?,?,?,?,?)",
+                          (company_id, session["user_id"], amount, exp_desc, now_str))
                 conn.commit()
+                # Telegram xabari
+                c.execute("SELECT name FROM companies WHERE id=?", (company_id,))
+                comp = c.fetchone()
+                c.execute("SELECT balance FROM companies WHERE id=?", (company_id,))
+                new_bal = c.fetchone()
+                tg_salary(comp["name"] if comp else "—", session["user"], worker["full_name"], amount, note, now_str,
+                          balance=new_bal["balance"] if new_bal else None)
                 success = "Maosh to'landi!"
 
         conn.close()

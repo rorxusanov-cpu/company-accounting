@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xarajatni tahrirlash</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--accent2:#00d4aa;--danger:#ef4444;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);min-height:100vh;display:flex;flex-direction:column;padding:28px 16px;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:36px}
+        .sidebar-logo .icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .sidebar-logo .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;line-height:1.3}
+        .sidebar-logo .brand span{display:block;font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.06em}
+        .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);padding:0 12px;margin:20px 0 8px}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px}
+        .sidebar a:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+        .sidebar a.active{background:linear-gradient(135deg,rgba(59,110,246,0.25),rgba(0,212,170,0.15));color:white;border-left:2px solid var(--accent2)}
+        .sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px}
+        .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04)}
+        .user-avatar{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .user-info .name{font-size:13px;font-weight:600;color:white}
+        .user-info .role{font-size:11px;color:rgba(255,255,255,0.35)}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:32px;display:flex;align-items:flex-start;justify-content:center}
+        .edit-card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:36px;width:100%;max-width:520px;margin-top:40px}
+        .edit-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px}
+        .edit-sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+        .original-box{background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;margin-bottom:24px;font-size:14px}
+        .original-box .label{font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+        .original-box .val{font-weight:600;color:#92400e}
+        .field{margin-bottom:18px}
+        .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:7px}
+        .field input,.field textarea{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;transition:border .2s}
+        .field input:focus,.field textarea:focus{border-color:var(--accent)}
+        .field textarea{resize:vertical;min-height:80px}
+        .btn-row{display:flex;gap:10px;margin-top:8px}
+        .btn-save{flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
+        .btn-cancel{flex:1;background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center}
+        .warning-note{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 16px;font-size:13px;color:#dc2626;margin-bottom:20px}
+        .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+        .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+        .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+        @media(max-width:768px){
+            .hamburger{display:flex}
+            .sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}
+            .overlay.open{display:block}
+            .main{margin-left:0;padding:20px;padding-top:70px}
+        }
+    
+        /* ===== UNIVERSAL MOBIL TUZATMALAR ===== */
+        @media (max-width: 768px) {
+            /* Sidebar */
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); z-index: 150; }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .hamburger { display: flex !important; }
+            .main { margin-left: 0 !important; padding: 16px !important; padding-top: 68px !important; }
+
+            /* Grid'lar */
+            .stats, s { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .grid-2, .form-row { grid-template-columns: 1fr !important; }
+            div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+            /* Jadvallar scroll */
+            .table-wrap, .card, .chart-section { overflow-x: auto !important; }
+            table { min-width: 480px; font-size: 12px !important; }
+            th, td { padding: 8px 10px !important; }
+
+            /* Topbar */
+            .topbar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+            .topbar-right, .profile-actions { flex-wrap: wrap !important; gap: 6px !important; }
+
+            /* Formalar */
+            .form-row { grid-template-columns: 1fr !important; }
+            .field input, .field select, .field textarea { font-size: 16px !important; }
+
+            /* Tugmalar */
+            .btn-row { flex-direction: column !important; }
+            .btn-add { width: 100% !important; }
+
+            /* Profillar */
+            .profile-card { flex-direction: column !important; }
+            .profile-left { flex-direction: column !important; text-align: center !important; }
+
+            /* Stat kartalar */
+            .stat-card, .stat { padding: 14px 12px !important; }
+            .stat-val, .stat-value { font-size: 18px !important; }
+
+            /* Page title */
+            .page-title { font-size: 18px !important; }
+
+            /* Chart */
+            canvas { max-height: 200px !important; }
+        }
+
+        @media (max-width: 480px) {
+            .stats, s { grid-template-columns: 1fr 1fr !important; }
+            .stat-card .stat-value { font-size: 16px !important; }
+            .profile-info h2 { font-size: 16px !important; }
+        }
+        </style>
+</head>
+<body>
+
+<button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🏢</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Asosiy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('expenses') }}" class="active">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}">👷 Ishchilar</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="edit-card">
+        <div class="edit-title">✏️ Xarajatni tahrirlash</div>
+        <div class="edit-sub">O'zgartirish haqida admin ga Telegram xabari boradi</div>
+
+        <div class="warning-note">
+            ⚠️ Tahrirlash tarixi saqlanadi va admin ko'radi. Asl qiymat ham ko'rsatiladi.
+        </div>
+
+        {% if expense.is_edited %}
+        <div class="original-box">
+            <div class="label">📋 Asl ma'lumot (birinchi kiritilgan)</div>
+            <div class="val">💰 {{ "{:,}".format(expense.original_amount) }} so'm</div>
+            <div class="val">📝 {{ expense.original_description }}</div>
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="field">
+                <label>Summa (so'm)</label>
+                <input type="number" name="amount" value="{{ expense.amount }}" min="1" required>
+            </div>
+            <div class="field">
+                <label>Izoh</label>
+                <textarea name="description" required>{{ expense.description }}</textarea>
+            </div>
+            <div class="btn-row">
+                <a href="{{ url_for('expenses') }}" class="btn-cancel">← Bekor qilish</a>
+                <button type="submit" class="btn-save">💾 Saqlash</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<script>
+function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open')}
+function closeSidebar(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+</script>
+</body>
+</html>
