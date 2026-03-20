@@ -324,6 +324,12 @@
             .profile-info h2 { font-size: 16px !important; }
         }
         </style>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b6ef6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CompAcc">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
 </head>
 <body>
 
@@ -349,6 +355,10 @@
     <a href="{{ url_for('admin_expenses') }}">💸 Xarajatlar</a>
     <a href="{{ url_for('admin_balances') }}">💰 Balans</a>
     <a href="{{ url_for('admin_reports') }}">📈 Hisobotlar</a>
+    <div class="nav-section">Issiqxona</div>
+    <a href="{{ url_for('admin_flowers') }}">🌸 Gullar</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('profile') }}">👤 Profilim</a>
 
     <div class="sidebar-bottom">
         <div class="user-badge">
@@ -474,5 +484,10 @@ function closeSidebar() {
 }
 </script>
 
+    <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").then(() => console.log("SW registered"));
+    }
+    </script>
 </body>
 </html>

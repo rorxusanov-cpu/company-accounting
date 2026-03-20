@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gullar | Company Accounting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--green:#16a34a;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);min-height:100vh;display:flex;flex-direction:column;padding:28px 16px;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:36px}
+        .sidebar-logo .icon{width:38px;height:38px;background:linear-gradient(135deg,#16a34a,#00d4aa);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .sidebar-logo .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;line-height:1.3}
+        .sidebar-logo .brand span{display:block;font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.06em}
+        .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);padding:0 12px;margin:20px 0 8px}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px}
+        .sidebar a:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+        .sidebar a.active{background:linear-gradient(135deg,rgba(22,163,74,0.3),rgba(0,212,170,0.2));color:white;border-left:2px solid #00d4aa}
+        .sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px}
+        .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04)}
+        .user-av{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .user-info .name{font-size:13px;font-weight:600;color:white}
+        .user-info .role{font-size:11px;color:rgba(255,255,255,0.35)}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:28px}
+        .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+        .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+        .page-title span{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+        .date-badge{background:#f0f4ff;border:1px solid var(--border);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--accent)}
+        /* CARD */
+        .entry-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+        /* JADVAL */
+        .tbl-wrap{overflow-x:auto}
+        .tbl{width:100%;border-collapse:collapse}
+        /* Sarlavha qatorlari */
+        .tbl .r-top th{padding:10px 8px;text-align:center;font-size:12px;font-weight:700;white-space:nowrap}
+        .tbl .r-top th.gul-th{background:#0f172a;color:white;text-align:left;min-width:130px;border-radius:8px 0 0 0}
+        .tbl .r-top th.s1-th{background:#14532d;color:#bbf7d0}
+        .tbl .r-top th.s2-th{background:#1e3a5f;color:#bfdbfe;border-radius:0 8px 0 0}
+        .tbl .r-top th.tot-th{background:#0f172a;color:#fbbf24}
+        /* Ikkinchi sarlavha */
+        .tbl .r-sub th{padding:6px 8px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap}
+        .tbl .r-sub th.s1-sub{background:#dcfce7;color:#16a34a;border-bottom:2px solid #16a34a}
+        .tbl .r-sub th.s2-sub{background:#dbeafe;color:#1d4ed8;border-bottom:2px solid #3b6ef6}
+        .tbl .r-sub th.empty{background:#f8fafc}
+        /* Ma'lumot qatorlari */
+        .tbl tbody tr{border-bottom:1px solid var(--border)}
+        .tbl tbody tr:hover td{background:#f8fffe}
+        .tbl tbody td{padding:6px 6px;vertical-align:middle;text-align:center}
+        .tbl tbody td.name-td{text-align:left;font-weight:700;font-size:14px;padding:8px 14px;white-space:nowrap;background:#fafafa}
+        /* INPUT */
+        .qi{width:60px;padding:6px 4px;border:1.5px solid #bbf7d0;border-radius:7px;font-size:14px;font-weight:700;text-align:center;background:#f0fdf4;color:#14532d;outline:none;transition:border .15s}
+        .qi:focus{border-color:#16a34a;background:#dcfce7}
+        .qi.q2{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+        .qi.q2:focus{border-color:#3b6ef6;background:#dbeafe}
+        /* Jami */
+        .tot-s1{font-weight:800;font-size:15px;color:#16a34a}
+        .tot-s2{font-weight:800;font-size:15px;color:#3b6ef6}
+        .tot-all{font-weight:800;font-size:16px;color:#f59e0b;background:#fffbeb}
+        /* SAQLASH */
+        .save-btn{background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:12px;padding:12px 30px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+        .save-btn:hover{opacity:.9}
+        /* ALERT */
+        .alert{padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:14px;font-weight:500}
+        .alert-success{background:#dcfce7;color:#16a34a}
+        .alert-error{background:#fee2e2;color:#dc2626}
+        /* TARIX ACCORDION */
+        .hist-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px}
+        .hist-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px}
+        .day-block{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
+        .day-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#f8fffe;transition:background .15s}
+        .day-row:hover{background:#f0fdf4}
+        .day-content{border-top:1px solid var(--border)}
+        .flower-block{border-bottom:1px solid var(--border)}
+        .flower-block:last-child{border-bottom:none}
+        .flower-row{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;cursor:pointer;background:#fff;transition:background .15s}
+        .flower-row:hover{background:#f8faff}
+        .flower-content{background:#fafcff;border-top:1px solid #e8f4ff}
+        .toggle-icon{font-size:11px;color:var(--muted);transition:transform .2s;display:inline-block;width:14px}
+        .toggle-icon.open{transform:rotate(90deg)}
+        .share-btn{background:#f0f9ff;color:#0088cc;border:1px solid #bfdbfe;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+        .share-btn:hover{background:#dbeafe}
+        .s1-badge{background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+        .s2-badge{background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+        .sz-badge{background:#f0fdf4;color:#16a34a;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600}
+        /* SOZLASH MODAL */
+        .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
+        .modal-bg.open{display:flex}
+        .modal{background:var(--card);border-radius:20px;padding:28px;min-width:340px;max-width:480px;width:92%;position:relative;max-height:88vh;overflow-y:auto}
+        .modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:18px}
+        .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)}
+        .field{margin-bottom:14px}
+        .field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px}
+        .field input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none}
+        .field input:focus{border-color:var(--green)}
+        .btn-green{background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
+        .size-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+        .sz-btn{padding:6px 12px;border:2px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--muted);transition:all .15s}
+        .sz-btn:hover,.sz-btn.on{border-color:var(--green);background:#dcfce7;color:var(--green)}
+        /* MOBILE */
+        .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+        .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+        .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+        @media(max-width:768px){
+            .hamburger{display:flex}.sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}.ovl.open{display:block}
+            .main{margin-left:0;padding:16px;padding-top:68px}
+            .qi{width:52px;font-size:13px}
+        }
+    </style>
+</head>
+<body>
+<button class="hamburger" onclick="toggleSB()"><span></span><span></span><span></span></button>
+<div class="ovl" id="ovl" onclick="closeSB()"></div>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🌸</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Moliyaviy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <a href="{{ url_for('expenses') }}">💸 Xarajatlarim</a>
+    <a href="{{ url_for('workers') }}">👷 Ishchilar</a>
+    <div class="nav-section">Issiqxona</div>
+    <a href="{{ url_for('flowers') }}" class="active">🌸 Gullar</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('my_reports') }}">📊 Hisobotim</a>
+    <a href="{{ url_for('profile') }}">👤 Profilim</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-av">👤</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Director</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="topbar">
+        <div class="page-title">🌸 Kunlik Terim <span>Chiqqan gullarni kiriting</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span class="date-badge" id="todayBadge"></span>
+            <button onclick="document.getElementById('settingsModal').style.display='flex'" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">⚙️ Gullarni sozlash</button>
+        </div>
+    </div>
+
+    {% if error %}<div class="alert alert-error">⚠️ {{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+
+    {% if flowers %}
+    <form method="POST">
+        <input type="hidden" name="action" value="bulk_harvest">
+        <div class="entry-card">
+            <!-- IZOH -->
+            <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;font-size:12px;">
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;background:#dcfce7;border:2px solid #16a34a;border-radius:4px;display:inline-block;"></span> <strong>1-sort</strong> — yaxshi sifat</span>
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;background:#dbeafe;border:2px solid #3b6ef6;border-radius:4px;display:inline-block;"></span> <strong>2-sort</strong> — pastroq sifat (1 katak)</span>
+            </div>
+
+            <div class="tbl-wrap">
+            <table class="tbl">
+                <thead>
+                    <!-- 1-qator: guruh sarlavhalari -->
+                    <tr class="r-top">
+                        <th class="gul-th" rowspan="2">🌸 Gul</th>
+                        {% if all_sizes %}
+                        <th class="s1-th" colspan="{{ all_sizes|length }}">🥇 1-sort</th>
+                        {% endif %}
+                        <th class="s2-th">🥈 2-sort</th>
+                        <th class="tot-th" rowspan="2">Jami</th>
+                    </tr>
+                    <!-- 2-qator: razmer sarlavhalari -->
+                    <tr class="r-sub">
+                        {% for sz in all_sizes %}
+                        <th class="s1-sub">{{ sz }}</th>
+                        {% endfor %}
+                        <th class="s2-sub">Hammasi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fl in flowers %}
+                    <tr>
+                        <td class="name-td">{{ fl.name }}</td>
+                        {% for sz in all_sizes %}
+                        <td>
+                            <input type="number"
+                                   name="qty_{{ fl.id }}_1_{{ sz }}"
+                                   class="qi row-{{ fl.id }}"
+                                   min="0" placeholder="—"
+                                   oninput="calcRow({{ fl.id }})">
+                        </td>
+                        {% endfor %}
+                        <!-- 2-sort: bitta katak -->
+                        <td>
+                            <input type="number"
+                                   name="qty_{{ fl.id }}_2_2sort"
+                                   class="qi q2 row-{{ fl.id }}"
+                                   min="0" placeholder="—"
+                                   oninput="calcRow({{ fl.id }})">
+                        </td>
+                        <td class="tot-all">
+                            <span id="tot_{{ fl.id }}">—</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+
+            <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div style="font-size:14px;color:var(--muted);">
+                    Jami: <strong id="grandTotal" style="color:var(--green);font-size:18px;">0</strong> ta gul
+                </div>
+                <button type="submit" class="save-btn">💾 Saqlash</button>
+            </div>
+        </div>
+    </form>
+
+    {% else %}
+    <div class="entry-card" style="text-align:center;padding:40px;">
+        <div style="font-size:48px;margin-bottom:12px;">🌱</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px;">Hali gullar qo'shilmagan</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">Avval "Gullarni sozlash" tugmasini bosib gul qo'shing</div>
+        <button onclick="document.getElementById('settingsModal').style.display='flex'" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">⚙️ Gullarni sozlash</button>
+    </div>
+    {% endif %}
+
+    <!-- TARIX -->
+    <div class="hist-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div class="hist-title" style="margin-bottom:0;">📅 Kunlik terimlar tarixi</div>
+        </div>
+
+        {% if days_data %}
+        {% for day, ddata in days_data.items() %}
+        <div style="background:var(--bg);border-radius:14px;margin-bottom:12px;overflow:hidden;border:1px solid var(--border);">
+
+            <!-- KUN SARLAVHASI -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#f8fafc;border-bottom:1px solid var(--border);">
+                <div onclick="toggleDay('d{{loop.index}}')" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;flex:1;">
+                    <span style="font-size:16px;">📅</span>
+                    <span style="font-weight:800;font-size:15px;">{{ day }}</span>
+                    <span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;">
+                        Jami: {{ "{:,}".format(ddata.total) }} ta
+                    </span>
+                    {% set s1_total = ddata.flowers.values()|map(attribute='total_s1')|sum %}
+                    {% set s2_total = ddata.flowers.values()|map(attribute='total_s2')|sum %}
+                    {% if s1_total > 0 %}
+                    <span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">1-sort: {{"{:,}".format(s1_total)}} ta</span>
+                    {% endif %}
+                    {% if s2_total > 0 %}
+                    <span style="background:#eff6ff;color:#3b6ef6;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">2-sort: {{"{:,}".format(s2_total)}} ta</span>
+                    {% endif %}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button onclick="openEditDay('{{ day }}')" style="background:#fffbeb;color:#d97706;border:1.5px solid #fde68a;border-radius:9px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✏️ Tahrirlash</button>
+                    <span onclick="toggleDay('d{{loop.index}}')" id="ico_d{{loop.index}}" style="color:var(--muted);font-size:18px;transition:transform .2s;cursor:pointer;">▼</span>
+                </div>
+            </div>
+
+            <!-- KUN ICHIDAGI GULLAR -->
+            <div id="d{{loop.index}}" style="padding:4px 0;">
+                {% for fname, fdata in ddata.flowers.items() %}
+                <div style="padding:12px 18px;{% if not loop.last %}border-bottom:1px solid #f0f4ff;{% endif %}">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="font-weight:700;font-size:14px;">🌸 {{ fname }}</span>
+                            <span style="background:#0f172a;color:white;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:800;">
+                                {{ "{:,}".format(fdata.total_s1 + fdata.total_s2) }} ta
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 1-SORT RAZMERLAR -->
+                    {% if fdata.sizes %}
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🥇 1-sort</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                            {% for s in fdata.sizes %}
+                            <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:10px 16px;text-align:center;min-width:68px;">
+                                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">{{ s.size }}</div>
+                                <div style="font-weight:800;font-size:22px;color:#16a34a;line-height:1;">{{ "{:,}".format(s.qty) }}</div>
+                                <div style="font-size:10px;color:var(--muted);margin-top:2px;">ta</div>
+                            </div>
+                            {% endfor %}
+                            <!-- 1-sort jami -->
+                            <div style="background:#14532d;border-radius:12px;padding:10px 16px;text-align:center;min-width:68px;">
+                                <div style="font-size:11px;color:#bbf7d0;margin-bottom:4px;font-weight:600;">Jami</div>
+                                <div style="font-weight:800;font-size:22px;color:#4ade80;line-height:1;">{{ "{:,}".format(fdata.total_s1) }}</div>
+                                <div style="font-size:10px;color:#bbf7d0;margin-top:2px;">ta</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 2-SORT -->
+                    {% if fdata.total_s2 > 0 %}
+                    <div style="display:flex;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 16px;display:inline-flex;">
+                        <span style="font-size:11px;color:#1d4ed8;font-weight:700;">🥈 2-sort</span>
+                        <span style="font-weight:800;font-size:22px;color:#3b6ef6;line-height:1;">{{ "{:,}".format(fdata.total_s2) }}</span>
+                        <span style="font-size:12px;color:var(--muted);">ta</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div style="text-align:center;padding:40px;color:var(--muted);">
+            <div style="font-size:40px;margin-bottom:10px;">📋</div>
+            <div>Hozircha terim yo'q</div>
+        </div>
+        {% endif %}
+    </div>
+
+</main>
+
+<!-- SOZLASH MODALI -->
+<div class="modal-bg" id="settingsModal" style="display:none;">
+    <div class="modal">
+        <button class="modal-close" onclick="document.getElementById('settingsModal').style.display='none'">✕</button>
+        <div class="modal-title">⚙️ Gullarni sozlash</div>
+
+        {% if flowers %}
+        <div style="margin-bottom:18px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Mavjud gullar</div>
+            {% for fl in flowers %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:10px;margin-bottom:6px;">
+                <span style="font-weight:600;">🌸 {{ fl.name }}</span>
+                <form method="POST" onsubmit="return confirm('{{ fl.name }} ni o\'chirasizmi?')" style="display:inline;">
+                    <input type="hidden" name="action" value="delete_flower">
+                    <input type="hidden" name="flower_id" value="{{ fl.id }}">
+                    <button type="submit" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">🗑</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="border-top:1px solid var(--border);padding-top:16px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">Yangi gul qo'shish</div>
+            <form method="POST">
+                <input type="hidden" name="action" value="add_flower">
+                <div class="field">
+                    <label>Gul nomi</label>
+                    <input type="text" name="name" placeholder="Masalan: Atirgul" required>
+                </div>
+                <div class="field">
+                    <label>1-sort razmerlar (sm)</label>
+                    <div class="size-grid" id="sizeGrid">
+                        {% for sz in [10,20,30,40,50,60,70,80,90,100] %}
+                        <button type="button" class="sz-btn" data-val="{{ sz }} sm" onclick="this.classList.toggle('on')">{{ sz }}</button>
+                        {% endfor %}
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:4px;">
+                        <input type="number" id="customSz" placeholder="Boshqa sm" min="1" style="width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);outline:none;">
+                        <button type="button" onclick="addCustomSz()" style="background:#dcfce7;color:#16a34a;border:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;">+</button>
+                    </div>
+                    <input type="hidden" name="sizes" id="sizesVal">
+                    <div style="font-size:11px;color:var(--muted);margin-top:5px;">2-sort uchun alohida katak avtomatik qo'shiladi</div>
+                </div>
+                <button type="submit" class="btn-green" onclick="collectSizes()">🌱 Gul qo'shish</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Sidebar
+function toggleSB(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('ovl').classList.toggle('open')}
+function closeSB(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('ovl').classList.remove('open')}
+
+// Bugungi sana
+document.getElementById('todayBadge').textContent = new Date().toLocaleDateString('uz-UZ',{day:'numeric',month:'long',year:'numeric'});
+
+// Qator jami hisoblash
+function calcRow(fid) {
+    const inputs = document.querySelectorAll('.row-' + fid);
+    let sum = 0;
+    inputs.forEach(i => sum += parseInt(i.value || 0));
+    const el = document.getElementById('tot_' + fid);
+    if(el) el.textContent = sum > 0 ? sum.toLocaleString() : '—';
+    let grand = 0;
+    document.querySelectorAll('.qi').forEach(i => grand += parseInt(i.value || 0));
+    document.getElementById('grandTotal').textContent = grand.toLocaleString();
+}
+
+// Tab/Enter bilan keyingi katakka
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = [...document.querySelectorAll('.qi')];
+    inputs.forEach((inp, i) => {
+        inp.addEventListener('keydown', e => {
+            if(e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if(inputs[i+1]) inputs[i+1].focus();
+            }
+        });
+    });
+});
+
+// Settings modal
+function openSettings() {
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+function closeSettings() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+    if(e.target === this) closeSettings();
+});
+
+// Kun yopish/ochish
+function toggleDay(id) {
+    const el = document.getElementById(id);
+    const ico = document.getElementById('ico_' + id);
+    if(!el) return;
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'block';
+    if(ico) ico.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+// Size picker
+function addCustomSz() {
+    const v = document.getElementById('customSz').value.trim();
+    if(!v || isNaN(v)) return;
+    const val = v + ' sm';
+    const grid = document.getElementById('sizeGrid');
+    if([...grid.querySelectorAll('.sz-btn')].find(b => b.dataset.val === val)) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sz-btn on';
+    btn.dataset.val = val;
+    btn.textContent = v;
+    btn.onclick = () => btn.classList.toggle('on');
+    grid.appendChild(btn);
+    document.getElementById('customSz').value = '';
+}
+
+function collectSizes() {
+    const vals = [...document.querySelectorAll('#sizeGrid .sz-btn.on')].map(b => b.dataset.val);
+    document.getElementById('sizesVal').value = vals.join(',');
+}
+</script>
+<!-- TAHRIRLASH MODALI -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border-radius:20px;padding:28px;width:92%;max-width:560px;max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <button onclick="closeEditModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);">✕</button>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px;">✏️ Terimni tahrirlash</div>
+        <div id="editDayLabel" style="font-size:13px;color:var(--muted);margin-bottom:18px;"></div>
+
+        <div id="editList" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;padding:20px;color:var(--muted);">⏳ Yuklanmoqda...</div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <div id="editStatus" style="font-size:13px;"></div>
+            <button onclick="closeEditModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">✅ Yopish</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ... (mavjud JS saqlanadi)
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    // Sahifani yangilab ma'lumotlarni reload qilamiz
+    location.reload();
+}
+
+async function openEditDay(day) {
+    document.getElementById('editModal').style.display = 'flex';
+    document.getElementById('editDayLabel').textContent = '📅 ' + day;
+    document.getElementById('editStatus').textContent = '';
+    document.getElementById('editList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">⏳ Yuklanmoqda...</div>';
+
+    const res = await fetch('/api/flowers/day-data?day=' + day);
+    const rows = await res.json();
+
+    if (!rows.length) {
+        document.getElementById('editList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Ma\'lumot topilmadi</div>';
+        return;
+    }
+
+    const html = rows.map(r => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-radius:12px;border:1px solid var(--border);gap:10px;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:14px;">🌸 ${r.flower_name}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                    ${r.note === '2-sort' ? '<span style="background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">2-sort</span>' :
+                    '<span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">1-sort</span>'}
+                    ${r.size_name ? ' · ' + r.size_name : ''}
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" id="qty_${r.id}" value="${r.quantity}" min="0"
+                       style="width:80px;padding:8px;border:1.5px solid #bbf7d0;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:#f0fdf4;outline:none;"
+                       onchange="saveHarvest(${r.id})">
+                <span style="font-size:13px;color:var(--muted);">ta</span>
+                <button onclick="deleteHarvest(${r.id}, this)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;">🗑</button>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('editList').innerHTML = html;
+}
+
+async function saveHarvest(id) {
+    const qty = parseInt(document.getElementById('qty_' + id).value || 0);
+    const status = document.getElementById('editStatus');
+    try {
+        const res = await fetch('/api/flowers/update-harvest', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: id, quantity: qty})
+        });
+        const data = await res.json();
+        if (data.ok) {
+            status.innerHTML = '<span style="color:#16a34a;">✅ Saqlandi!</span>';
+            setTimeout(() => status.innerHTML = '', 2000);
+        }
+    } catch(e) {
+        status.innerHTML = '<span style="color:#dc2626;">❌ Xatolik</span>';
+    }
+}
+
+async function deleteHarvest(id, btn) {
+    if (!confirm('Bu yozuvni o\'chirasizmi?')) return;
+    const res = await fetch('/api/flowers/update-harvest', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id, quantity: 0})
+    });
+    const data = await res.json();
+    if (data.ok) {
+        btn.closest('div[style*="border-radius:12px"]').remove();
+        document.getElementById('editStatus').innerHTML = '<span style="color:#16a34a;">✅ O\'chirildi!</span>';
+    }
+}
+</script>
+</body>

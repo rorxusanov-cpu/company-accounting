@@ -190,6 +190,39 @@ def init_db():
     )
     """)
 
+    # Gullar jadvali
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS flowers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER,
+        name TEXT,
+        created_at TEXT
+    )
+    """)
+
+    # Gul o'lchamlari (razmerlar)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS flower_sizes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        flower_id INTEGER,
+        size_name TEXT,
+        created_at TEXT
+    )
+    """)
+
+    # Chiqqan gullar (harvests)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS flower_harvests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        flower_id INTEGER,
+        size_id INTEGER,
+        company_id INTEGER,
+        quantity INTEGER,
+        note TEXT,
+        created_at TEXT
+    )
+    """)
+
     # monthly_salary ustunini mavjud workers jadvaliga qo'shish (migration)
     try:
         c.execute("ALTER TABLE workers ADD COLUMN status TEXT DEFAULT 'active'")
@@ -1762,6 +1795,348 @@ def my_reports():
 @app.route('/ping')
 def ping():
     return 'pong', 200
+
+
+# ================= GUL TAHRIRI API =================
+@app.route('/api/flowers/day-data')
+def flower_day_data():
+    """Biror kun uchun barcha terim ma'lumotlarini qaytaradi"""
+    from flask import jsonify
+    if "user" not in session:
+        return jsonify({'error': 'login required'}), 401
+
+    day = request.args.get('day', '')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else None
+
+    c.execute("""
+        SELECT h.id, h.flower_id, h.size_id, h.quantity, h.note,
+               f.name as flower_name, fs.size_name
+        FROM flower_harvests h
+        JOIN flowers f ON h.flower_id = f.id
+        LEFT JOIN flower_sizes fs ON h.size_id = fs.id
+        WHERE h.company_id=? AND date(h.created_at)=?
+        ORDER BY f.name, fs.size_name
+    """, (company_id, day))
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route('/api/flowers/update-harvest', methods=['POST'])
+def update_harvest():
+    """Terim sonini yangilash yoki o'chirish"""
+    from flask import jsonify
+    if "user" not in session:
+        return jsonify({'error': 'login required'}), 401
+
+    data = request.get_json()
+    harvest_id = data.get('id')
+    new_qty = int(data.get('quantity', 0))
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else None
+
+    if new_qty <= 0:
+        c.execute("DELETE FROM flower_harvests WHERE id=? AND company_id=?",
+                  (harvest_id, company_id))
+    else:
+        c.execute("UPDATE flower_harvests SET quantity=? WHERE id=? AND company_id=?",
+                  (new_qty, harvest_id, company_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+
+# ================= GULLAR (DIRECTOR) =================
+@app.route("/flowers", methods=["GET", "POST"])
+def flowers():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+    u = c.fetchone()
+    company_id = u["company_id"] if u else None
+
+    error = ""
+    success = ""
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "add_flower":
+            name = request.form.get("name", "").strip()
+            sizes_hidden = request.form.get("sizes", "").strip()
+            if name:
+                c.execute("INSERT INTO flowers (company_id, name, created_at) VALUES (?,?,?)",
+                          (company_id, name, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                flower_id = c.lastrowid
+                for sz in [s.strip() for s in sizes_hidden.split(",") if s.strip()]:
+                    c.execute("INSERT INTO flower_sizes (flower_id, size_name, created_at) VALUES (?,?,?)",
+                              (flower_id, sz, datetime.now().strftime("%Y-%m-%d %H:%M")))
+                conn.commit()
+                success = f"\u2705 \'{name}\' guli qo\u2019shildi!"
+
+        elif action == "bulk_harvest":
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+            total_saved = 0
+            for key, val in request.form.items():
+                if not key.startswith("qty_"):
+                    continue
+                parts = key.split("_", 3)
+                if len(parts) != 4:
+                    continue
+                _, flower_id, sort_num, size_name = parts
+                quantity = int(val or 0)
+                if quantity <= 0:
+                    continue
+                # 2-sort uchun size_id yo'q, note ga "2-sort" yozamiz
+                if size_name == "2sort":
+                    size_id = None
+                    note = "2-sort"
+                else:
+                    c.execute("SELECT id FROM flower_sizes WHERE flower_id=? AND size_name=?",
+                              (flower_id, size_name))
+                    sz_row = c.fetchone()
+                    size_id = sz_row["id"] if sz_row else None
+                    note = "1-sort"
+                c.execute("""INSERT INTO flower_harvests
+                             (flower_id, size_id, company_id, quantity, note, created_at)
+                             VALUES (?,?,?,?,?,?)""",
+                          (flower_id, size_id, company_id, quantity, note, now_str))
+                total_saved += quantity
+            if total_saved > 0:
+                conn.commit()
+                success = f"✅ Jami {total_saved:,} ta gul saqlandi!"
+            else:
+                error = "Hech qanday son kiritilmadi!"
+
+        elif action == "delete_flower":
+            flower_id = request.form.get("flower_id")
+            c.execute("DELETE FROM flower_harvests WHERE flower_id=?", (flower_id,))
+            c.execute("DELETE FROM flower_sizes WHERE flower_id=?", (flower_id,))
+            c.execute("DELETE FROM flowers WHERE id=? AND company_id=?", (flower_id, company_id))
+            conn.commit()
+            success = "Gul o\u2019chirildi"
+
+        conn.close()
+        return redirect(url_for("flowers"))
+
+    c.execute("""
+        SELECT f.id, f.name FROM flowers f
+        WHERE f.company_id=? ORDER BY f.name
+    """, (company_id,))
+    flowers_list = c.fetchall()
+
+    all_sizes_set = []
+    size_map = {}
+    for fl in flowers_list:
+        c.execute("SELECT id, size_name FROM flower_sizes WHERE flower_id=? ORDER BY CAST(size_name AS INTEGER)",
+                  (fl["id"],))
+        for row in c.fetchall():
+            sname = row["size_name"]
+            if sname not in all_sizes_set:
+                all_sizes_set.append(sname)
+            size_map[(fl["id"], sname)] = row["id"]
+
+    def size_sort_key(s):
+        try:
+            return int(''.join(filter(str.isdigit, s)))
+        except:
+            return 9999
+
+    all_sizes_set.sort(key=size_sort_key)
+
+    # Kunlik guruhlab — tarix uchun
+    c.execute("""
+        SELECT h.quantity, h.note as sort_info, h.created_at,
+               f.name as flower_name, fs.size_name,
+               date(h.created_at) as day,
+               f.id as flower_id, h.id as harvest_id
+        FROM flower_harvests h
+        JOIN flowers f ON h.flower_id = f.id
+        LEFT JOIN flower_sizes fs ON h.size_id = fs.id
+        WHERE h.company_id=?
+        ORDER BY h.created_at DESC LIMIT 200
+    """, (company_id,))
+    all_harvests = c.fetchall()
+
+    # Kunlar bo'yicha guruhlash
+    from collections import OrderedDict
+    days_data = OrderedDict()
+    for h in all_harvests:
+        day = h["day"]
+        if day not in days_data:
+            days_data[day] = {"total": 0, "flowers": OrderedDict()}
+        fname = h["flower_name"]
+        if fname not in days_data[day]["flowers"]:
+            days_data[day]["flowers"][fname] = {
+                "total_s1": 0, "total_s2": 0, "sizes": []
+            }
+        qty = h["quantity"]
+        days_data[day]["total"] += qty
+        is_s2 = h["sort_info"] == "2-sort"
+        if is_s2:
+            days_data[day]["flowers"][fname]["total_s2"] += qty
+        else:
+            days_data[day]["flowers"][fname]["total_s1"] += qty
+            days_data[day]["flowers"][fname]["sizes"].append({
+                "size": h["size_name"] or "—",
+                "qty": qty
+            })
+
+    # So'nggi 50 ta (jadval uchun ham)
+    recent_harvests = all_harvests[:50]
+
+    conn.close()
+    return render_template("flowers.html",
+        flowers=flowers_list,
+        all_sizes=all_sizes_set,
+        size_map=size_map,
+        recent_harvests=recent_harvests,
+        days_data=days_data,
+        error=error,
+        success=success
+    )
+
+def flower_sizes_api(flower_id):
+    from flask import jsonify
+    if "user" not in session:
+        return jsonify([])
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, size_name FROM flower_sizes WHERE flower_id=?", (flower_id,))
+    rows = [{"id": r["id"], "name": r["size_name"]} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+# ================= GULLAR ADMIN =================
+@app.route("/admin/flowers")
+def admin_flowers():
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌"
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # Kompaniya + gul bo'yicha umumiy (sort ajratilgan)
+    c.execute("""
+        SELECT c.name as company, f.name as flower,
+               IFNULL(SUM(CASE WHEN h.note!='2-sort' THEN h.quantity ELSE 0 END),0) as s1_total,
+               IFNULL(SUM(CASE WHEN h.note='2-sort' THEN h.quantity ELSE 0 END),0) as s2_total,
+               IFNULL(SUM(h.quantity),0) as grand_total,
+               c.id as company_id
+        FROM companies c
+        JOIN flowers f ON f.company_id = c.id
+        LEFT JOIN flower_harvests h ON h.flower_id = f.id
+        GROUP BY c.id, f.id
+        ORDER BY c.name, grand_total DESC
+    """)
+    summary = c.fetchall()
+
+    # Razmer bo'yicha (faqat 1-sort)
+    c.execute("""
+        SELECT c.name as company, f.name as flower,
+               IFNULL(fs.size_name, '—') as size,
+               IFNULL(SUM(h.quantity), 0) as qty
+        FROM companies c
+        JOIN flowers f ON f.company_id = c.id
+        LEFT JOIN flower_sizes fs ON fs.flower_id = f.id
+        LEFT JOIN flower_harvests h ON h.flower_id = f.id
+            AND h.size_id = fs.id AND h.note != '2-sort'
+        GROUP BY c.id, f.id, fs.id
+        HAVING qty > 0
+        ORDER BY c.name, f.name, CAST(fs.size_name AS INTEGER)
+    """)
+    by_size = c.fetchall()
+
+    # Oxirgi 7 kunlik trend (har kun jami)
+    c.execute("""
+        SELECT date(h.created_at) as day,
+               IFNULL(SUM(CASE WHEN h.note!='2-sort' THEN h.quantity ELSE 0 END),0) as s1,
+               IFNULL(SUM(CASE WHEN h.note='2-sort' THEN h.quantity ELSE 0 END),0) as s2,
+               IFNULL(SUM(h.quantity),0) as total
+        FROM flower_harvests h
+        GROUP BY day ORDER BY day DESC LIMIT 14
+    """)
+    daily_trend = list(reversed(c.fetchall()))
+
+    # So'nggi havestlar — kunlik guruhlab
+    c.execute("""
+        SELECT h.quantity, h.note as sort_info, h.created_at,
+               f.name as flower, fs.size_name as size,
+               c.name as company, date(h.created_at) as day
+        FROM flower_harvests h
+        JOIN flowers f ON h.flower_id = f.id
+        JOIN companies c ON h.company_id = c.id
+        LEFT JOIN flower_sizes fs ON h.size_id = fs.id
+        ORDER BY h.created_at DESC LIMIT 100
+    """)
+    all_recent = c.fetchall()
+
+    # Kunlar bo'yicha guruhlash
+    from collections import OrderedDict
+    days_summary = OrderedDict()
+    for h in all_recent:
+        day = h["day"]
+        if day not in days_summary:
+            days_summary[day] = {"total": 0, "s1": 0, "s2": 0, "companies": {}}
+        days_summary[day]["total"] += h["quantity"]
+        if h["sort_info"] == "2-sort":
+            days_summary[day]["s2"] += h["quantity"]
+        else:
+            days_summary[day]["s1"] += h["quantity"]
+        comp = h["company"]
+        if comp not in days_summary[day]["companies"]:
+            days_summary[day]["companies"][comp] = {"total": 0, "flowers": {}}
+        fl = h["flower"]
+        if fl not in days_summary[day]["companies"][comp]["flowers"]:
+            days_summary[day]["companies"][comp]["flowers"][fl] = {"s1": [], "s2": 0}
+        if h["sort_info"] == "2-sort":
+            days_summary[day]["companies"][comp]["flowers"][fl]["s2"] += h["quantity"]
+        else:
+            days_summary[day]["companies"][comp]["flowers"][fl]["s1"].append({
+                "size": h["size"] or "—", "qty": h["quantity"]
+            })
+        days_summary[day]["companies"][comp]["total"] += h["quantity"]
+
+    # Umumiy statistika
+    c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests")
+    total_all = c.fetchone()[0]
+    c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE date(created_at)=date('now')")
+    total_today = c.fetchone()[0]
+    c.execute("""SELECT IFNULL(SUM(quantity),0) FROM flower_harvests
+                 WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')""")
+    total_month = c.fetchone()[0]
+    c.execute("SELECT COUNT(DISTINCT date(created_at)) FROM flower_harvests")
+    total_days = c.fetchone()[0]
+
+    c.execute("SELECT id, name FROM companies ORDER BY name")
+    companies = c.fetchall()
+
+    conn.close()
+    return render_template("admin_flowers.html",
+        summary=summary,
+        by_size=by_size,
+        daily_trend=daily_trend,
+        days_summary=days_summary,
+        total_all=total_all,
+        total_today=total_today,
+        total_month=total_month,
+        total_days=total_days,
+        companies=companies
+    )
+
 
 
 @app.route('/sw.js')

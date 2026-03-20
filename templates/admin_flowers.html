@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gullar | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--accent2:#00d4aa;--green:#16a34a;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);min-height:100vh;display:flex;flex-direction:column;padding:28px 16px;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:36px}
+        .sidebar-logo .icon{width:38px;height:38px;background:linear-gradient(135deg,#16a34a,#00d4aa);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .sidebar-logo .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;line-height:1.3}
+        .sidebar-logo .brand span{display:block;font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.06em}
+        .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);padding:0 12px;margin:20px 0 8px}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px}
+        .sidebar a:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+        .sidebar a.active{background:linear-gradient(135deg,rgba(22,163,74,0.3),rgba(0,212,170,0.2));color:white;border-left:2px solid #00d4aa}
+        .sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px}
+        .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04)}
+        .user-av{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .user-info .name{font-size:13px;font-weight:600;color:white}
+        .user-info .role{font-size:11px;color:rgba(255,255,255,0.35)}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:28px}
+        .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+        .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+        .page-title span{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+        /* STATS */
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+        .stat{background:var(--card);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--green)}
+        .stat.blue{border-left-color:var(--accent)}
+        .stat.yellow{border-left-color:#f59e0b}
+        .stat.purple{border-left-color:#8b5cf6}
+        .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+        .stat-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--green)}
+        .stat.blue .stat-val{color:var(--accent)}
+        .stat.yellow .stat-val{color:#f59e0b}
+        .stat.purple .stat-val{color:#8b5cf6}
+        /* CARD */
+        .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:22px;margin-bottom:20px}
+        .card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+        /* KOMPANIYA KARTALAR */
+        .comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:20px}
+        .comp-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;border-top:4px solid var(--green)}
+        .comp-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+        .flower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+        .flower-row:last-child{border-bottom:none}
+        .fl-name{font-weight:600;font-size:14px}
+        .fl-stats{display:flex;gap:8px;align-items:center}
+        .s1-chip{background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+        .s2-chip{background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+        .total-chip{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#0f172a}
+        /* KUNLIK TARIX */
+        .day-item{background:var(--bg);border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border)}
+        .day-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:#f8fafc}
+        .day-head:hover{background:#f0f4ff}
+        .day-body{display:none;padding:12px 16px 6px}
+        .comp-block{margin-bottom:10px}
+        .comp-head{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+        .fl-block{margin-bottom:8px}
+        .fl-head{font-weight:700;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+        .sizes-wrap{display:flex;flex-wrap:wrap;gap:6px}
+        .size-box{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:6px 12px;text-align:center;min-width:58px}
+        .size-box .sz{font-size:10px;color:var(--muted);margin-bottom:2px}
+        .size-box .qty{font-weight:800;font-size:16px;color:#16a34a}
+        .s2-box{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:8px 16px;display:inline-flex;align-items:center;gap:8px}
+        /* QIDIRUV */
+        .search-box{padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;width:220px}
+        .search-box:focus{border-color:var(--green)}
+        /* JADVAL */
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:#f8fafc;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:10px 12px;text-align:left;border-bottom:1.5px solid var(--border)}
+        td{padding:11px 12px;border-bottom:1px solid var(--border)}
+        tr:hover td{background:#f8fafc}
+        tr:last-child td{border-bottom:none}
+        .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+        .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+        .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+        @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+        @media(max-width:768px){
+            .hamburger{display:flex}.sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}.ovl.open{display:block}
+            .main{margin-left:0;padding:16px;padding-top:68px}
+            .stats{grid-template-columns:1fr 1fr}
+        }
+    </style>
+</head>
+<body>
+<button class="hamburger" onclick="toggleSB()"><span></span><span></span><span></span></button>
+<div class="ovl" id="ovl" onclick="closeSB()"></div>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="icon">🌸</div>
+        <div class="brand">Company <span>Accounting</span></div>
+    </div>
+    <div class="nav-section">Moliyaviy</div>
+    <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    <a href="{{ url_for('admin_companies') }}">🏢 Kompaniyalar</a>
+    <a href="{{ url_for('admin_directors') }}">👔 Direktorlar</a>
+    <a href="{{ url_for('admin_expenses') }}">💸 Xarajatlar</a>
+    <a href="{{ url_for('admin_balances') }}">💰 Balans</a>
+    <a href="{{ url_for('admin_reports') }}">📈 Hisobotlar</a>
+    <div class="nav-section">Issiqxona</div>
+    <a href="{{ url_for('admin_flowers') }}" class="active">🌸 Gullar</a>
+    <div class="nav-section">Mening</div>
+    <a href="{{ url_for('profile') }}">👤 Profilim</a>
+    <div class="sidebar-bottom">
+        <div class="user-badge">
+            <div class="user-av">👑</div>
+            <div class="user-info">
+                <div class="name">{{ session.get("user") }}</div>
+                <div class="role">Admin</div>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" style="margin-top:8px;">🚪 Chiqish</a>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="topbar">
+        <div class="page-title">🌸 Gullar boshqaruvi <span>Barcha kompaniyalar issiqxona mahsulotlari</span></div>
+    </div>
+
+    <!-- STATISTIKA -->
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-label">☀️ Bugungi terim</div>
+            <div class="stat-val">{{ "{:,}".format(total_today) }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">ta gul</div>
+        </div>
+        <div class="stat blue">
+            <div class="stat-label">📅 Bu oylik</div>
+            <div class="stat-val">{{ "{:,}".format(total_month) }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">ta gul</div>
+        </div>
+        <div class="stat yellow">
+            <div class="stat-label">📊 Jami terim</div>
+            <div class="stat-val">{{ "{:,}".format(total_all) }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">ta gul</div>
+        </div>
+        <div class="stat purple">
+            <div class="stat-label">🗓 Ish kunlari</div>
+            <div class="stat-val">{{ total_days }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">kun</div>
+        </div>
+    </div>
+
+    <!-- GRAFIKLAR -->
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">📈 Kunlik trend (oxirgi 14 kun)</div>
+            {% if daily_trend %}
+            <canvas id="trendChart" height="180"></canvas>
+            {% else %}
+            <p style="color:var(--muted);text-align:center;padding:20px;">Ma'lumot yo'q</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <div class="card-title">🏢 Kompaniya bo'yicha jami</div>
+            <canvas id="compChart" height="180"></canvas>
+        </div>
+    </div>
+
+    <!-- KOMPANIYA KARTALAR -->
+    <div class="card-title" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:16px;">🏢 Kompaniya bo'yicha batafsil</div>
+    {% set ns = namespace(last_comp='') %}
+    <div class="comp-grid">
+        {% for comp in companies %}
+        {% set comp_rows = summary | selectattr('company_id', 'eq', comp.id) | list %}
+        {% if comp_rows %}
+        <div class="comp-card">
+            <div class="comp-name">🏢 {{ comp.name }}</div>
+            {% for row in comp_rows %}
+            <div class="flower-row">
+                <div class="fl-name">🌸 {{ row.flower }}</div>
+                <div class="fl-stats">
+                    {% if row.s1_total > 0 %}
+                    <span class="s1-chip">1: {{ "{:,}".format(row.s1_total) }}</span>
+                    {% endif %}
+                    {% if row.s2_total > 0 %}
+                    <span class="s2-chip">2: {{ "{:,}".format(row.s2_total) }}</span>
+                    {% endif %}
+                    <span class="total-chip">{{ "{:,}".format(row.grand_total) }} ta</span>
+                </div>
+            </div>
+            {% endfor %}
+            <!-- Kompaniya jami -->
+            <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:var(--muted);font-weight:600;">JAMI:</span>
+                <span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--green);">
+                    {{ "{:,}".format(comp_rows | sum(attribute='grand_total')) }} ta
+                </span>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- KUNLIK TARIX -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div class="card-title" style="margin-bottom:0;">📅 Kunlik terimlar tarixi</div>
+            <input class="search-box" id="searchInput" placeholder="🔍 Qidirish..." oninput="filterDays()">
+        </div>
+
+        {% if days_summary %}
+        {% for day, ddata in days_summary.items() %}
+        <div class="day-item" data-day="{{ day }}">
+            <div class="day-head" onclick="toggleDay('day_{{ loop.index }}')">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-size:15px;">📅</span>
+                    <span style="font-weight:800;font-size:15px;">{{ day }}</span>
+                    <span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;">Jami: {{ "{:,}".format(ddata.total) }} ta</span>
+                    {% if ddata.s1 > 0 %}
+                    <span class="s1-chip">1-sort: {{ "{:,}".format(ddata.s1) }} ta</span>
+                    {% endif %}
+                    {% if ddata.s2 > 0 %}
+                    <span class="s2-chip">2-sort: {{ "{:,}".format(ddata.s2) }} ta</span>
+                    {% endif %}
+                </div>
+                <span id="ico_day_{{ loop.index }}" style="color:var(--muted);font-size:18px;transition:transform .2s;">▼</span>
+            </div>
+            <div class="day-body" id="day_{{ loop.index }}">
+                {% for comp_name, cdata in ddata.companies.items() %}
+                <div class="comp-block">
+                    <div class="comp-head">🏢 {{ comp_name }} — {{ "{:,}".format(cdata.total) }} ta</div>
+                    {% for fl_name, fdata in cdata.flowers.items() %}
+                    <div class="fl-block">
+                        <div class="fl-head">
+                            🌸 {{ fl_name }}
+                            {% set s1_sum = fdata.s1 | sum(attribute='qty') %}
+                            {% set total_fl = s1_sum + fdata.s2 %}
+                            <span style="background:#0f172a;color:white;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:800;">{{ "{:,}".format(total_fl) }} ta</span>
+                        </div>
+                        {% if fdata.s1 %}
+                        <div style="margin-bottom:6px;">
+                            <div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;margin-bottom:5px;">🥇 1-sort</div>
+                            <div class="sizes-wrap">
+                                {% for s in fdata.s1 %}
+                                <div class="size-box">
+                                    <div class="sz">{{ s.size }}</div>
+                                    <div class="qty">{{ "{:,}".format(s.qty) }}</div>
+                                    <div style="font-size:9px;color:var(--muted);">ta</div>
+                                </div>
+                                {% endfor %}
+                                {% if fdata.s1 | length > 1 %}
+                                <div class="size-box" style="background:#14532d;border-color:#14532d;">
+                                    <div class="sz" style="color:#bbf7d0;">Jami</div>
+                                    <div class="qty" style="color:#4ade80;">{{ "{:,}".format(fdata.s1 | sum(attribute='qty')) }}</div>
+                                    <div style="font-size:9px;color:#bbf7d0;">ta</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if fdata.s2 > 0 %}
+                        <div class="s2-box">
+                            <span style="font-size:11px;color:#1d4ed8;font-weight:700;">🥈 2-sort</span>
+                            <span style="font-weight:800;font-size:18px;color:#3b6ef6;">{{ "{:,}".format(fdata.s2) }}</span>
+                            <span style="font-size:12px;color:var(--muted);">ta</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="text-align:center;padding:40px;color:var(--muted);">
+            <div style="font-size:40px;margin-bottom:10px;">🌱</div>
+            <div>Hozircha terim ma'lumotlari yo'q</div>
+        </div>
+        {% endif %}
+    </div>
+</main>
+
+<script>
+function toggleSB(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('ovl').classList.toggle('open')}
+function closeSB(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('ovl').classList.remove('open')}
+
+function toggleDay(id) {
+    const el = document.getElementById(id);
+    const ico = document.getElementById('ico_' + id);
+    if(!el) return;
+    const open = el.style.display === 'block';
+    el.style.display = open ? 'none' : 'block';
+    if(ico) ico.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function filterDays() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.day-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+// Trend chart
+{% if daily_trend %}
+new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ daily_trend | map(attribute='day') | list | tojson }},
+        datasets: [
+            {
+                label: '1-sort',
+                data: {{ daily_trend | map(attribute='s1') | list | tojson }},
+                backgroundColor: 'rgba(22,163,74,0.8)',
+                borderRadius: 6, borderSkipped: false, stack: 'a'
+            },
+            {
+                label: '2-sort',
+                data: {{ daily_trend | map(attribute='s2') | list | tojson }},
+                backgroundColor: 'rgba(59,110,246,0.7)',
+                borderRadius: 6, borderSkipped: false, stack: 'a'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {position: 'bottom', labels: {padding: 14, font: {size: 11}}},
+            tooltip: {callbacks: {label: ctx => ' ' + ctx.parsed.y.toLocaleString() + ' ta'}}
+        },
+        scales: {
+            y: {stacked: true, grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {callback: v => v.toLocaleString()}},
+            x: {stacked: true, grid: {display: false}}
+        }
+    }
+});
+{% endif %}
+
+// Kompaniya chart
+const compData = {};
+{% for row in summary %}
+if(!compData['{{ row.company }}']) compData['{{ row.company }}'] = 0;
+compData['{{ row.company }}'] += {{ row.grand_total }};
+{% endfor %}
+
+if(Object.keys(compData).length) {
+    new Chart(document.getElementById('compChart'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(compData),
+            datasets: [{
+                data: Object.values(compData),
+                backgroundColor: ['rgba(22,163,74,0.85)','rgba(59,110,246,0.85)','rgba(245,158,11,0.85)','rgba(139,92,246,0.85)','rgba(0,212,170,0.85)'],
+                borderWidth: 0, hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true, cutout: '60%',
+            plugins: {
+                legend: {position: 'bottom', labels: {padding: 14, font: {size: 11}}},
+                tooltip: {callbacks: {label: ctx => ' ' + ctx.parsed.toLocaleString() + ' ta'}}
+            }
+        }
+    });
+}
+</script>
+</body>
+</html>

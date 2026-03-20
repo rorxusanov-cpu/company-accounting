@@ -14,7 +14,8 @@
     <h2>👔 Direktorni kompaniyaga biriktirish</h2>
 
     {% if directors and companies %}
-    <form method="POST">
+    <form method="POST" action="{{ url_for('expenses') }}">
+
 
         <label>Direktor:</label>
         <select name="director_id" required>

@@ -1,7 +1,23 @@
 import sqlite3
 
-conn = sqlite3.connect("users.db")
-c = conn.cursor()
-c.execute("UPDATE users SET role='admin' WHERE username='admin'")
-conn.commit()
-conn.close()
+def make_admin(username):
+    conn = get_db_connection()
+    c = conn.cursor()
+
+
+    c.execute(
+        "UPDATE users SET role='admin' WHERE username=?",
+        (username,)
+    )
+
+    if c.rowcount == 0:
+        print("❌ Bunday user topilmadi")
+    else:
+        print(f"✅ '{username}' admin qilindi")
+
+    conn.commit()
+    conn.close()
+
+
+if __name__ == "__main__":
+    make_admin("admin")

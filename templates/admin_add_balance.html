@@ -12,7 +12,8 @@
 <div class="login-box" style="width:500px;">
     <h2>➕ Kompaniya balansini to‘ldirish</h2>
 
-    <form method="POST">
+    <form method="POST" action="{{ url_for('expenses') }}">
+
         <label>Kompaniya:</label>
         <<select name="company_id" required>
     <option value="" disabled selected>
