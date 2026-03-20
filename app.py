@@ -348,8 +348,7 @@ def signup():
             ))
             conn.commit()
             conn.close()
-            session['pending_username'] = username
-            return redirect(url_for("connect_bot"))
+            return redirect(url_for("login"))
         except sqlite3.IntegrityError:
             error = "Bu login mavjud!"
         except Exception as e:
@@ -3596,13 +3595,6 @@ def bot_cmd_help(chat_id):
         "🕗 Har kuni 20:00 da avtomatik\n"
         "   hisobot yuboriladi 📊"
     )
-
-
-@app.route("/connect-bot")
-def connect_bot():
-    """Signup dan keyin botga ulanish sahifasi"""
-    bot_username = os.environ.get("BOT_USERNAME", "IssiqxonaBot")
-    return render_template("connect_bot.html", bot_username=bot_username)
 
 
 @app.route("/telegram/webhook", methods=["POST"])
