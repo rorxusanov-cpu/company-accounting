@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gullar | Company Accounting</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
         :root{--bg:#f0f2f8;--sidebar-bg:#0a0f1e;--sidebar-w:240px;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#3b6ef6;--green:#16a34a;--border:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,0.06)}
@@ -28,63 +29,36 @@
         .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
         .page-title span{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
         .date-badge{background:#f0f4ff;border:1px solid var(--border);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--accent)}
-        /* CARD */
         .entry-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
-        /* JADVAL */
         .tbl-wrap{overflow-x:auto}
         .tbl{width:100%;border-collapse:collapse}
-        /* Sarlavha qatorlari */
         .tbl .r-top th{padding:10px 8px;text-align:center;font-size:12px;font-weight:700;white-space:nowrap}
         .tbl .r-top th.gul-th{background:#0f172a;color:white;text-align:left;min-width:130px;border-radius:8px 0 0 0}
         .tbl .r-top th.s1-th{background:#14532d;color:#bbf7d0}
         .tbl .r-top th.s2-th{background:#1e3a5f;color:#bfdbfe;border-radius:0 8px 0 0}
         .tbl .r-top th.tot-th{background:#0f172a;color:#fbbf24}
-        /* Ikkinchi sarlavha */
         .tbl .r-sub th{padding:6px 8px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap}
         .tbl .r-sub th.s1-sub{background:#dcfce7;color:#16a34a;border-bottom:2px solid #16a34a}
         .tbl .r-sub th.s2-sub{background:#dbeafe;color:#1d4ed8;border-bottom:2px solid #3b6ef6}
         .tbl .r-sub th.empty{background:#f8fafc}
-        /* Ma'lumot qatorlari */
         .tbl tbody tr{border-bottom:1px solid var(--border)}
         .tbl tbody tr:hover td{background:#f8fffe}
         .tbl tbody td{padding:6px 6px;vertical-align:middle;text-align:center}
         .tbl tbody td.name-td{text-align:left;font-weight:700;font-size:14px;padding:8px 14px;white-space:nowrap;background:#fafafa}
-        /* INPUT */
         .qi{width:60px;padding:6px 4px;border:1.5px solid #bbf7d0;border-radius:7px;font-size:14px;font-weight:700;text-align:center;background:#f0fdf4;color:#14532d;outline:none;transition:border .15s}
         .qi:focus{border-color:#16a34a;background:#dcfce7}
         .qi.q2{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
         .qi.q2:focus{border-color:#3b6ef6;background:#dbeafe}
-        /* Jami */
         .tot-s1{font-weight:800;font-size:15px;color:#16a34a}
         .tot-s2{font-weight:800;font-size:15px;color:#3b6ef6}
         .tot-all{font-weight:800;font-size:16px;color:#f59e0b;background:#fffbeb}
-        /* SAQLASH */
         .save-btn{background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:12px;padding:12px 30px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,.3)}
         .save-btn:hover{opacity:.9}
-        /* ALERT */
         .alert{padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:14px;font-weight:500}
         .alert-success{background:#dcfce7;color:#16a34a}
         .alert-error{background:#fee2e2;color:#dc2626}
-        /* TARIX ACCORDION */
         .hist-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px}
         .hist-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px}
-        .day-block{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
-        .day-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#f8fffe;transition:background .15s}
-        .day-row:hover{background:#f0fdf4}
-        .day-content{border-top:1px solid var(--border)}
-        .flower-block{border-bottom:1px solid var(--border)}
-        .flower-block:last-child{border-bottom:none}
-        .flower-row{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;cursor:pointer;background:#fff;transition:background .15s}
-        .flower-row:hover{background:#f8faff}
-        .flower-content{background:#fafcff;border-top:1px solid #e8f4ff}
-        .toggle-icon{font-size:11px;color:var(--muted);transition:transform .2s;display:inline-block;width:14px}
-        .toggle-icon.open{transform:rotate(90deg)}
-        .share-btn{background:#f0f9ff;color:#0088cc;border:1px solid #bfdbfe;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
-        .share-btn:hover{background:#dbeafe}
-        .s1-badge{background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
-        .s2-badge{background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
-        .sz-badge{background:#f0fdf4;color:#16a34a;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600}
-        /* SOZLASH MODAL */
         .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
         .modal-bg.open{display:flex}
         .modal{background:var(--card);border-radius:20px;padding:28px;min-width:340px;max-width:480px;width:92%;position:relative;max-height:88vh;overflow-y:auto}
@@ -98,10 +72,24 @@
         .size-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
         .sz-btn{padding:6px 12px;border:2px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--muted);transition:all .15s}
         .sz-btn:hover,.sz-btn.on{border-color:var(--green);background:#dcfce7;color:var(--green)}
+        /* STAT CARDS */
+        .stat-section{margin-top:36px}
+        .stat-header{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px}
+        .stat-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+        .stat-controls{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+        .stat-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+        .stat-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px}
+        .stat-card-title{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)}
+        .period-btn{padding:8px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+        .period-btn.active{border:2px solid #16a34a;background:#dcfce7;color:#14532d}
+        .period-btn.inactive{border:1px solid var(--border);background:transparent;color:var(--muted)}
         /* MOBILE */
         .hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--sidebar-bg);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
         .hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
         .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+        @media(max-width:900px){
+            .stat-grid-2{grid-template-columns:1fr}
+        }
         @media(max-width:768px){
             .hamburger{display:flex}.sidebar{transform:translateX(-100%);transition:transform .3s}
             .sidebar.open{transform:translateX(0)}.ovl.open{display:block}
@@ -156,16 +144,13 @@
     <form method="POST">
         <input type="hidden" name="action" value="bulk_harvest">
         <div class="entry-card">
-            <!-- IZOH -->
             <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;font-size:12px;">
                 <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;background:#dcfce7;border:2px solid #16a34a;border-radius:4px;display:inline-block;"></span> <strong>1-sort</strong> — yaxshi sifat</span>
                 <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;background:#dbeafe;border:2px solid #3b6ef6;border-radius:4px;display:inline-block;"></span> <strong>2-sort</strong> — pastroq sifat (1 katak)</span>
             </div>
-
             <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
-                    <!-- 1-qator: guruh sarlavhalari -->
                     <tr class="r-top">
                         <th class="gul-th" rowspan="2">🌸 Gul</th>
                         {% if all_sizes %}
@@ -174,7 +159,6 @@
                         <th class="s2-th">🥈 2-sort</th>
                         <th class="tot-th" rowspan="2">Jami</th>
                     </tr>
-                    <!-- 2-qator: razmer sarlavhalari -->
                     <tr class="r-sub">
                         {% for sz in all_sizes %}
                         <th class="s1-sub">{{ sz }}</th>
@@ -188,20 +172,11 @@
                         <td class="name-td">{{ fl.name }}</td>
                         {% for sz in all_sizes %}
                         <td>
-                            <input type="number"
-                                   name="qty_{{ fl.id }}_1_{{ sz }}"
-                                   class="qi row-{{ fl.id }}"
-                                   min="0" placeholder="—"
-                                   oninput="calcRow({{ fl.id }})">
+                            <input type="number" name="qty_{{ fl.id }}_1_{{ sz }}" class="qi row-{{ fl.id }}" min="0" placeholder="—" oninput="calcRow({{ fl.id }})">
                         </td>
                         {% endfor %}
-                        <!-- 2-sort: bitta katak -->
                         <td>
-                            <input type="number"
-                                   name="qty_{{ fl.id }}_2_2sort"
-                                   class="qi q2 row-{{ fl.id }}"
-                                   min="0" placeholder="—"
-                                   oninput="calcRow({{ fl.id }})">
+                            <input type="number" name="qty_{{ fl.id }}_2_2sort" class="qi q2 row-{{ fl.id }}" min="0" placeholder="—" oninput="calcRow({{ fl.id }})">
                         </td>
                         <td class="tot-all">
                             <span id="tot_{{ fl.id }}">—</span>
@@ -211,16 +186,12 @@
                 </tbody>
             </table>
             </div>
-
             <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-                <div style="font-size:14px;color:var(--muted);">
-                    Jami: <strong id="grandTotal" style="color:var(--green);font-size:18px;">0</strong> ta gul
-                </div>
+                <div style="font-size:14px;color:var(--muted);">Jami: <strong id="grandTotal" style="color:var(--green);font-size:18px;">0</strong> ta gul</div>
                 <button type="submit" class="save-btn">💾 Saqlash</button>
             </div>
         </div>
     </form>
-
     {% else %}
     <div class="entry-card" style="text-align:center;padding:40px;">
         <div style="font-size:48px;margin-bottom:12px;">🌱</div>
@@ -231,52 +202,37 @@
     {% endif %}
 
     <!-- TARIX -->
-    <div class="hist-card">
+    <div class="hist-card" style="margin-bottom:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div class="hist-title" style="margin-bottom:0;">📅 Kunlik terimlar tarixi</div>
         </div>
-
         {% if days_data %}
         {% for day, ddata in days_data.items() %}
         <div style="background:var(--bg);border-radius:14px;margin-bottom:12px;overflow:hidden;border:1px solid var(--border);">
-
-            <!-- KUN SARLAVHASI -->
             <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#f8fafc;border-bottom:1px solid var(--border);">
                 <div onclick="toggleDay('d{{loop.index}}')" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;flex:1;">
                     <span style="font-size:16px;">📅</span>
                     <span style="font-weight:800;font-size:15px;">{{ day }}</span>
-                    <span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;">
-                        Jami: {{ "{:,}".format(ddata.total) }} ta
-                    </span>
+                    <span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;">Jami: {{ "{:,}".format(ddata.total) }} ta</span>
                     {% set s1_total = ddata.flowers.values()|map(attribute='total_s1')|sum %}
                     {% set s2_total = ddata.flowers.values()|map(attribute='total_s2')|sum %}
-                    {% if s1_total > 0 %}
-                    <span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">1-sort: {{"{:,}".format(s1_total)}} ta</span>
-                    {% endif %}
-                    {% if s2_total > 0 %}
-                    <span style="background:#eff6ff;color:#3b6ef6;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">2-sort: {{"{:,}".format(s2_total)}} ta</span>
-                    {% endif %}
+                    {% if s1_total > 0 %}<span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">1-sort: {{"{:,}".format(s1_total)}} ta</span>{% endif %}
+                    {% if s2_total > 0 %}<span style="background:#eff6ff;color:#3b6ef6;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">2-sort: {{"{:,}".format(s2_total)}} ta</span>{% endif %}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <button onclick="openEditDay('{{ day }}')" style="background:#fffbeb;color:#d97706;border:1.5px solid #fde68a;border-radius:9px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✏️ Tahrirlash</button>
                     <span onclick="toggleDay('d{{loop.index}}')" id="ico_d{{loop.index}}" style="color:var(--muted);font-size:18px;transition:transform .2s;cursor:pointer;">▼</span>
                 </div>
             </div>
-
-            <!-- KUN ICHIDAGI GULLAR -->
             <div id="d{{loop.index}}" style="padding:4px 0;">
                 {% for fname, fdata in ddata.flowers.items() %}
                 <div style="padding:12px 18px;{% if not loop.last %}border-bottom:1px solid #f0f4ff;{% endif %}">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <span style="font-weight:700;font-size:14px;">🌸 {{ fname }}</span>
-                            <span style="background:#0f172a;color:white;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:800;">
-                                {{ "{:,}".format(fdata.total_s1 + fdata.total_s2) }} ta
-                            </span>
+                            <span style="background:#0f172a;color:white;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:800;">{{ "{:,}".format(fdata.total_s1 + fdata.total_s2) }} ta</span>
                         </div>
                     </div>
-
-                    <!-- 1-SORT RAZMERLAR -->
                     {% if fdata.sizes %}
                     <div style="margin-bottom:8px;">
                         <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🥇 1-sort</div>
@@ -288,7 +244,6 @@
                                 <div style="font-size:10px;color:var(--muted);margin-top:2px;">ta</div>
                             </div>
                             {% endfor %}
-                            <!-- 1-sort jami -->
                             <div style="background:#14532d;border-radius:12px;padding:10px 16px;text-align:center;min-width:68px;">
                                 <div style="font-size:11px;color:#bbf7d0;margin-bottom:4px;font-weight:600;">Jami</div>
                                 <div style="font-weight:800;font-size:22px;color:#4ade80;line-height:1;">{{ "{:,}".format(fdata.total_s1) }}</div>
@@ -297,10 +252,8 @@
                         </div>
                     </div>
                     {% endif %}
-
-                    <!-- 2-SORT -->
                     {% if fdata.total_s2 > 0 %}
-                    <div style="display:flex;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 16px;display:inline-flex;">
+                    <div style="display:inline-flex;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 16px;">
                         <span style="font-size:11px;color:#1d4ed8;font-weight:700;">🥈 2-sort</span>
                         <span style="font-weight:800;font-size:22px;color:#3b6ef6;line-height:1;">{{ "{:,}".format(fdata.total_s2) }}</span>
                         <span style="font-size:12px;color:var(--muted);">ta</span>
@@ -311,7 +264,6 @@
             </div>
         </div>
         {% endfor %}
-
         {% else %}
         <div style="text-align:center;padding:40px;color:var(--muted);">
             <div style="font-size:40px;margin-bottom:10px;">📋</div>
@@ -320,6 +272,64 @@
         {% endif %}
     </div>
 
+    <!-- ===== STATISTIKA — main ichida, pastda ===== -->
+    <div class="stat-section">
+        <div class="stat-header">📊 Statistika</div>
+        <p class="stat-sub">Gullar o'sishi tahlili</p>
+
+        <div class="stat-controls">
+            <button class="period-btn active" id="btn-weekly" onclick="setPeriod('weekly')">Haftalik</button>
+            <button class="period-btn inactive" id="btn-monthly" onclick="setPeriod('monthly')">Oylik</button>
+            <input type="month" id="stat-month" value="{{ now_month }}"
+                style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text);outline:none;"
+                onchange="loadTop3();{% if session.get('role') == 'admin' %}loadCompanies();{% endif %}">
+        </div>
+
+        <!-- Grafik + Top 3 -->
+        <div class="stat-grid-2">
+            <div class="stat-card">
+                <div class="stat-card-title">📈 O'sish dinamikasi</div>
+                <div style="position:relative;height:260px;">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">🏆 Top 3 gul</div>
+                <div id="top3-list" style="display:flex;flex-direction:column;gap:14px;padding-top:4px;">
+                    <div style="text-align:center;padding:40px;color:var(--muted);">⏳ Yuklanmoqda...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="stat-card" style="margin-bottom:16px;">
+            <div class="stat-card-title">📅 Kunlik kiritish tarixi (so'nggi 90 kun)</div>
+            <div style="overflow-x:auto;">
+                <div id="heatmap-grid" style="display:flex;flex-wrap:wrap;gap:4px;min-width:560px;"></div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted);">
+                    <span>Kam</span>
+                    <span style="width:13px;height:13px;border-radius:3px;background:#f0fdf4;border:1px solid #bbf7d0;display:inline-block;"></span>
+                    <span style="width:13px;height:13px;border-radius:3px;background:#86efac;display:inline-block;"></span>
+                    <span style="width:13px;height:13px;border-radius:3px;background:#16a34a;display:inline-block;"></span>
+                    <span style="width:13px;height:13px;border-radius:3px;background:#14532d;display:inline-block;"></span>
+                    <span>Ko'p</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kompaniyalar — faqat admin -->
+        {% if session.get('role') == 'admin' %}
+        <div class="stat-card" style="margin-bottom:16px;">
+            <div class="stat-card-title">🏢 Kompaniyalar taqqoslash</div>
+            <div style="position:relative;height:240px;">
+                <canvas id="companiesChart"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    <!-- /STATISTIKA -->
+
 </main>
 
 <!-- SOZLASH MODALI -->
@@ -327,7 +337,6 @@
     <div class="modal">
         <button class="modal-close" onclick="document.getElementById('settingsModal').style.display='none'">✕</button>
         <div class="modal-title">⚙️ Gullarni sozlash</div>
-
         {% if flowers %}
         <div style="margin-bottom:18px;">
             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Mavjud gullar</div>
@@ -343,7 +352,6 @@
             {% endfor %}
         </div>
         {% endif %}
-
         <div style="border-top:1px solid var(--border);padding-top:16px;">
             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">Yangi gul qo'shish</div>
             <form method="POST">
@@ -372,6 +380,22 @@
     </div>
 </div>
 
+<!-- TAHRIRLASH MODALI -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border-radius:20px;padding:28px;width:92%;max-width:560px;max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <button onclick="closeEditModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);">✕</button>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px;">✏️ Terimni tahrirlash</div>
+        <div id="editDayLabel" style="font-size:13px;color:var(--muted);margin-bottom:18px;"></div>
+        <div id="editList" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;padding:20px;color:var(--muted);">⏳ Yuklanmoqda...</div>
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <div id="editStatus" style="font-size:13px;"></div>
+            <button onclick="closeEditModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">✅ Yopish</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // Sidebar
 function toggleSB(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('ovl').classList.toggle('open')}
@@ -380,7 +404,7 @@ function closeSB(){document.querySelector('.sidebar').classList.remove('open');d
 // Bugungi sana
 document.getElementById('todayBadge').textContent = new Date().toLocaleDateString('uz-UZ',{day:'numeric',month:'long',year:'numeric'});
 
-// Qator jami hisoblash
+// Qator jami
 function calcRow(fid) {
     const inputs = document.querySelectorAll('.row-' + fid);
     let sum = 0;
@@ -392,28 +416,19 @@ function calcRow(fid) {
     document.getElementById('grandTotal').textContent = grand.toLocaleString();
 }
 
-// Tab/Enter bilan keyingi katakka
+// Tab/Enter
 document.addEventListener('DOMContentLoaded', function() {
     const inputs = [...document.querySelectorAll('.qi')];
     inputs.forEach((inp, i) => {
         inp.addEventListener('keydown', e => {
-            if(e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                if(inputs[i+1]) inputs[i+1].focus();
-            }
+            if(e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if(inputs[i+1]) inputs[i+1].focus(); }
         });
     });
 });
 
-// Settings modal
-function openSettings() {
-    document.getElementById('settingsModal').style.display = 'flex';
-}
-function closeSettings() {
-    document.getElementById('settingsModal').style.display = 'none';
-}
+// Modal
 document.getElementById('settingsModal').addEventListener('click', function(e) {
-    if(e.target === this) closeSettings();
+    if(e.target === this) this.style.display = 'none';
 });
 
 // Kun yopish/ochish
@@ -434,107 +449,67 @@ function addCustomSz() {
     const grid = document.getElementById('sizeGrid');
     if([...grid.querySelectorAll('.sz-btn')].find(b => b.dataset.val === val)) return;
     const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'sz-btn on';
-    btn.dataset.val = val;
-    btn.textContent = v;
+    btn.type = 'button'; btn.className = 'sz-btn on'; btn.dataset.val = val; btn.textContent = v;
     btn.onclick = () => btn.classList.toggle('on');
     grid.appendChild(btn);
     document.getElementById('customSz').value = '';
 }
-
 function collectSizes() {
     const vals = [...document.querySelectorAll('#sizeGrid .sz-btn.on')].map(b => b.dataset.val);
     document.getElementById('sizesVal').value = vals.join(',');
 }
-</script>
-<!-- TAHRIRLASH MODALI -->
-<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:var(--card);border-radius:20px;padding:28px;width:92%;max-width:560px;max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-        <button onclick="closeEditModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);">✕</button>
-        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px;">✏️ Terimni tahrirlash</div>
-        <div id="editDayLabel" style="font-size:13px;color:var(--muted);margin-bottom:18px;"></div>
 
-        <div id="editList" style="display:flex;flex-direction:column;gap:10px;">
-            <div style="text-align:center;padding:20px;color:var(--muted);">⏳ Yuklanmoqda...</div>
-        </div>
-
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-            <div id="editStatus" style="font-size:13px;"></div>
-            <button onclick="closeEditModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">✅ Yopish</button>
-        </div>
-    </div>
-</div>
-
-<script>
-// ... (mavjud JS saqlanadi)
+// Edit modal
 function closeEditModal() {
     document.getElementById('editModal').style.display = 'none';
-    // Sahifani yangilab ma'lumotlarni reload qilamiz
     location.reload();
 }
-
 async function openEditDay(day) {
     document.getElementById('editModal').style.display = 'flex';
     document.getElementById('editDayLabel').textContent = '📅 ' + day;
     document.getElementById('editStatus').textContent = '';
     document.getElementById('editList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">⏳ Yuklanmoqda...</div>';
-
     const res = await fetch('/api/flowers/day-data?day=' + day);
     const rows = await res.json();
-
     if (!rows.length) {
         document.getElementById('editList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Ma\'lumot topilmadi</div>';
         return;
     }
-
-    const html = rows.map(r => `
+    document.getElementById('editList').innerHTML = rows.map(r => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-radius:12px;border:1px solid var(--border);gap:10px;">
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:700;font-size:14px;">🌸 ${r.flower_name}</div>
                 <div style="font-size:12px;color:var(--muted);margin-top:2px;">
-                    ${r.note === '2-sort' ? '<span style="background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">2-sort</span>' :
-                    '<span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">1-sort</span>'}
+                    ${r.note === '2-sort' ? '<span style="background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">2-sort</span>' : '<span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;">1-sort</span>'}
                     ${r.size_name ? ' · ' + r.size_name : ''}
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <input type="number" id="qty_${r.id}" value="${r.quantity}" min="0"
-                       style="width:80px;padding:8px;border:1.5px solid #bbf7d0;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:#f0fdf4;outline:none;"
-                       onchange="saveHarvest(${r.id})">
+                    style="width:80px;padding:8px;border:1.5px solid #bbf7d0;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:#f0fdf4;outline:none;"
+                    onchange="saveHarvest(${r.id})">
                 <span style="font-size:13px;color:var(--muted);">ta</span>
                 <button onclick="deleteHarvest(${r.id}, this)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;">🗑</button>
             </div>
         </div>
     `).join('');
-
-    document.getElementById('editList').innerHTML = html;
 }
-
 async function saveHarvest(id) {
     const qty = parseInt(document.getElementById('qty_' + id).value || 0);
     const status = document.getElementById('editStatus');
     try {
         const res = await fetch('/api/flowers/update-harvest', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({id: id, quantity: qty})
         });
         const data = await res.json();
-        if (data.ok) {
-            status.innerHTML = '<span style="color:#16a34a;">✅ Saqlandi!</span>';
-            setTimeout(() => status.innerHTML = '', 2000);
-        }
-    } catch(e) {
-        status.innerHTML = '<span style="color:#dc2626;">❌ Xatolik</span>';
-    }
+        if (data.ok) { status.innerHTML = '<span style="color:#16a34a;">✅ Saqlandi!</span>'; setTimeout(() => status.innerHTML = '', 2000); }
+    } catch(e) { status.innerHTML = '<span style="color:#dc2626;">❌ Xatolik</span>'; }
 }
-
 async function deleteHarvest(id, btn) {
     if (!confirm('Bu yozuvni o\'chirasizmi?')) return;
     const res = await fetch('/api/flowers/update-harvest', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id: id, quantity: 0})
     });
     const data = await res.json();
@@ -543,5 +518,160 @@ async function deleteHarvest(id, btn) {
         document.getElementById('editStatus').innerHTML = '<span style="color:#16a34a;">✅ O\'chirildi!</span>';
     }
 }
+
+// ===== STATISTIKA JS =====
+const COLORS = ['#16a34a','#3b6ef6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#10b981'];
+let currentPeriod = 'weekly';
+let weeklyChartInst = null;
+let companiesChartInst = null;
+
+function setPeriod(p) {
+    currentPeriod = p;
+    document.getElementById('btn-weekly').className = 'period-btn ' + (p === 'weekly' ? 'active' : 'inactive');
+    document.getElementById('btn-monthly').className = 'period-btn ' + (p === 'monthly' ? 'active' : 'inactive');
+    loadWeekly();
+}
+
+async function loadWeekly() {
+    try {
+        const res = await fetch('/api/flowers/stats/weekly?period=' + currentPeriod);
+        const json = await res.json();
+        const { periods, flowers, data } = json;
+
+        const labels = periods.map(p => {
+            if (currentPeriod === 'monthly') {
+                const [y, m] = p.split('-');
+                const mo = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return mo[parseInt(m)] + ' ' + y.slice(2);
+            }
+            return 'Hafta ' + p.split('-W')[1];
+        });
+
+        const datasets = flowers.map((fn, i) => ({
+            label: fn,
+            data: periods.map(p => (data[p] && data[p][fn]) || 0),
+            borderColor: COLORS[i % COLORS.length],
+            backgroundColor: COLORS[i % COLORS.length] + '18',
+            fill: true, tension: 0.4, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5
+        }));
+
+        if (weeklyChartInst) weeklyChartInst.destroy();
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        weeklyChartInst = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels.length ? labels : ['Ma\'lumot yo\'q'], datasets: datasets.length ? datasets : [{label:'',data:[0]}] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 }, padding: 16 } } },
+                scales: {
+                    x: { ticks: { font: { size: 11 }, color: '#64748b' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { font: { size: 11 }, color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+                }
+            }
+        });
+    } catch(e) { console.error('Grafik xatosi:', e); }
+}
+
+async function loadTop3() {
+    try {
+        const month = document.getElementById('stat-month').value;
+        const res = await fetch('/api/flowers/stats/top3?month=' + month);
+        const rows = await res.json();
+        const container = document.getElementById('top3-list');
+        if (!rows.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);"><div style="font-size:32px;margin-bottom:8px;">🌱</div><div>Bu oyda ma\'lumot yo\'q</div></div>';
+            return;
+        }
+        const max = rows[0].total;
+        const medals = ['🥇','🥈','🥉'];
+        const bgColors = ['#fffbeb','#f8fafc','#fdf4ff'];
+        container.innerHTML = rows.map((r, i) => `
+            <div style="background:${bgColors[i]};border-radius:12px;padding:14px 16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="font-size:24px;">${medals[i]}</span>
+                    <div style="flex:1;">
+                        <div style="font-size:15px;font-weight:700;">${r.name}</div>
+                        <div style="font-size:13px;color:var(--muted);">${r.total.toLocaleString()} ta</div>
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:${COLORS[i]};">${Math.round(r.total/max*100)}%</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.06);border-radius:6px;height:7px;overflow:hidden;">
+                    <div style="background:${COLORS[i]};height:7px;width:${Math.round(r.total/max*100)}%;border-radius:6px;transition:width .6s ease;"></div>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) { console.error('Top3 xatosi:', e); }
+}
+
+async function loadHeatmap() {
+    try {
+        const res = await fetch('/api/flowers/stats/heatmap');
+        const rows = await res.json();
+        const dayMap = {};
+        let maxVal = 1;
+        rows.forEach(r => { dayMap[r.day] = r.total; if (r.total > maxVal) maxVal = r.total; });
+
+        const days = [];
+        for (let i = 89; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            days.push(d.toISOString().slice(0, 10));
+        }
+
+        const grid = document.getElementById('heatmap-grid');
+        grid.innerHTML = days.map(day => {
+            const val = dayMap[day] || 0;
+            let bg = '#f0fdf4', border = '1px solid #bbf7d0';
+            if (val > 0) {
+                const pct = val / maxVal;
+                if (pct > 0.66) { bg = '#14532d'; border = 'none'; }
+                else if (pct > 0.33) { bg = '#16a34a'; border = 'none'; }
+                else { bg = '#86efac'; border = 'none'; }
+            }
+            return `<div title="${day}: ${val} ta" style="width:13px;height:13px;border-radius:3px;background:${bg};${border};flex-shrink:0;cursor:default;"></div>`;
+        }).join('');
+    } catch(e) { console.error('Heatmap xatosi:', e); }
+}
+
+{% if session.get('role') == 'admin' %}
+async function loadCompanies() {
+    try {
+        const month = document.getElementById('stat-month').value;
+        const res = await fetch('/api/flowers/stats/companies?month=' + month);
+        const rows = await res.json();
+        if (!rows.length) return;
+        if (companiesChartInst) companiesChartInst.destroy();
+        const ctx = document.getElementById('companiesChart').getContext('2d');
+        companiesChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: rows.map(r => r.company),
+                datasets: [{
+                    label: 'Jami gul',
+                    data: rows.map(r => r.total),
+                    backgroundColor: rows.map((_, i) => COLORS[i % COLORS.length] + 'bb'),
+                    borderColor: rows.map((_, i) => COLORS[i % COLORS.length]),
+                    borderWidth: 2, borderRadius: 10, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { font: { size: 12 }, color: '#64748b' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { font: { size: 11 }, color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+                }
+            }
+        });
+    } catch(e) { console.error('Kompaniyalar xatosi:', e); }
+}
+{% endif %}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadWeekly();
+    loadTop3();
+    loadHeatmap();
+    {% if session.get('role') == 'admin' %}loadCompanies();{% endif %}
+});
 </script>
 </body>
+</html>

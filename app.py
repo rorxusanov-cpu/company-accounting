@@ -2005,7 +2005,8 @@ def flowers():
         recent_harvests=recent_harvests,
         days_data=days_data,
         error=error,
-        success=success
+        success=success,
+        now_month=datetime.now().strftime("%Y-%m")
     )
 
 def flower_sizes_api(flower_id):
@@ -2016,6 +2017,170 @@ def flower_sizes_api(flower_id):
     c = conn.cursor()
     c.execute("SELECT id, size_name FROM flower_sizes WHERE flower_id=?", (flower_id,))
     rows = [{"id": r["id"], "name": r["size_name"]} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+# ================= GULLAR STATISTIKA API =================
+from flask import jsonify
+
+@app.route('/api/flowers/stats/weekly')
+def flower_stats_weekly():
+    """Haftalik/oylik o'sish grafigi uchun"""
+    if "user" not in session:
+        return jsonify([])
+    conn = get_db()
+    c = conn.cursor()
+    is_admin = session.get("role") == "admin"
+    period = request.args.get("period", "weekly")  # weekly yoki monthly
+
+    if period == "monthly":
+        fmt = "%Y-%m"
+        limit = 12
+    else:
+        fmt = "%Y-%W"
+        limit = 12
+
+    if is_admin:
+        c.execute(f"""
+            SELECT strftime('{fmt}', h.created_at) as period,
+                   f.name as flower_name,
+                   SUM(h.quantity) as total
+            FROM flower_harvests h
+            JOIN flowers f ON h.flower_id = f.id
+            GROUP BY period, flower_name
+            ORDER BY period DESC
+            LIMIT 200
+        """)
+    else:
+        c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+        u = c.fetchone()
+        company_id = u["company_id"] if u else None
+        c.execute(f"""
+            SELECT strftime('{fmt}', h.created_at) as period,
+                   f.name as flower_name,
+                   SUM(h.quantity) as total
+            FROM flower_harvests h
+            JOIN flowers f ON h.flower_id = f.id
+            WHERE h.company_id=?
+            GROUP BY period, flower_name
+            ORDER BY period DESC
+            LIMIT 200
+        """, (company_id,))
+
+    rows = c.fetchall()
+    conn.close()
+
+    # Strukturani qayta tartibga keltirish
+    periods = []
+    flower_names = []
+    data = {}
+    for r in rows:
+        p = r["period"]
+        fn = r["flower_name"]
+        if p not in periods:
+            periods.append(p)
+        if fn not in flower_names:
+            flower_names.append(fn)
+        if p not in data:
+            data[p] = {}
+        data[p][fn] = r["total"]
+
+    periods = sorted(periods)[-limit:]
+    return jsonify({"periods": periods, "flowers": flower_names, "data": data})
+
+
+@app.route('/api/flowers/stats/top3')
+def flower_stats_top3():
+    """Top 3 eng ko'p o'sgan gul"""
+    if "user" not in session:
+        return jsonify([])
+    conn = get_db()
+    c = conn.cursor()
+    is_admin = session.get("role") == "admin"
+    month = request.args.get("month", datetime.now().strftime("%Y-%m"))
+
+    if is_admin:
+        c.execute("""
+            SELECT f.name as flower_name, SUM(h.quantity) as total
+            FROM flower_harvests h
+            JOIN flowers f ON h.flower_id = f.id
+            WHERE strftime('%Y-%m', h.created_at) = ?
+            GROUP BY f.name
+            ORDER BY total DESC
+            LIMIT 3
+        """, (month,))
+    else:
+        c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+        u = c.fetchone()
+        company_id = u["company_id"] if u else None
+        c.execute("""
+            SELECT f.name as flower_name, SUM(h.quantity) as total
+            FROM flower_harvests h
+            JOIN flowers f ON h.flower_id = f.id
+            WHERE h.company_id=? AND strftime('%Y-%m', h.created_at) = ?
+            GROUP BY f.name
+            ORDER BY total DESC
+            LIMIT 3
+        """, (company_id, month))
+
+    rows = [{"name": r["flower_name"], "total": r["total"]} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route('/api/flowers/stats/heatmap')
+def flower_stats_heatmap():
+    """Kunlik kiritish tarixi (heatmap)"""
+    if "user" not in session:
+        return jsonify([])
+    conn = get_db()
+    c = conn.cursor()
+    is_admin = session.get("role") == "admin"
+
+    if is_admin:
+        c.execute("""
+            SELECT date(created_at) as day, SUM(quantity) as total
+            FROM flower_harvests
+            GROUP BY day
+            ORDER BY day DESC
+            LIMIT 90
+        """)
+    else:
+        c.execute("SELECT company_id FROM users WHERE id=?", (session["user_id"],))
+        u = c.fetchone()
+        company_id = u["company_id"] if u else None
+        c.execute("""
+            SELECT date(created_at) as day, SUM(quantity) as total
+            FROM flower_harvests
+            WHERE company_id=?
+            GROUP BY day
+            ORDER BY day DESC
+            LIMIT 90
+        """, (company_id,))
+
+    rows = [{"day": r["day"], "total": r["total"]} for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route('/api/flowers/stats/companies')
+def flower_stats_companies():
+    """Kompaniyalar taqqoslash — faqat admin"""
+    if "user" not in session or session.get("role") != "admin":
+        return jsonify([])
+    conn = get_db()
+    c = conn.cursor()
+    month = request.args.get("month", datetime.now().strftime("%Y-%m"))
+    c.execute("""
+        SELECT comp.name as company_name, SUM(h.quantity) as total
+        FROM flower_harvests h
+        JOIN companies comp ON h.company_id = comp.id
+        WHERE strftime('%Y-%m', h.created_at) = ?
+        GROUP BY comp.name
+        ORDER BY total DESC
+    """, (month,))
+    rows = [{"company": r["company_name"], "total": r["total"]} for r in c.fetchall()]
     conn.close()
     return jsonify(rows)
 
@@ -2983,6 +3148,320 @@ def api_expenses_by_period():
 
 # ================= RUN =================
 init_db()  # Gunicorn va oddiy run ikkalasida ham ishlaydi
+
+# ================= SCHEDULER (KUNLIK HISOBOT 20:00) =================
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    import pytz
+
+    def run_daily_report():
+        try:
+            from daily_report import main as send_report
+            send_report()
+        except Exception as e:
+            print(f"[Scheduler] Hisobot xatosi: {e}")
+
+    scheduler = BackgroundScheduler(timezone=pytz.timezone("Asia/Tashkent"))
+    scheduler.add_job(
+        run_daily_report,
+        trigger=CronTrigger(hour=20, minute=0, timezone=pytz.timezone("Asia/Tashkent")),
+        id="daily_report",
+        replace_existing=True
+    )
+    scheduler.start()
+    print("[Scheduler] Kunlik hisobot scheduler ishga tushdi — har kuni soat 20:00 (Toshkent)")
+
+except ImportError:
+    print("[Scheduler] APScheduler o'rnatilmagan. 'pip install apscheduler pytz' buyrug'ini bajaring.")
+except Exception as e:
+    print(f"[Scheduler] Xato: {e}")
+
+
+# Manuel yuborish endpoint — admin uchun
+@app.route("/admin/send-report")
+def admin_send_report():
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌", 403
+    try:
+        from daily_report import main as send_report
+        send_report()
+        return "✅ Hisobot muvaffaqiyatli yuborildi!", 200
+    except Exception as e:
+        return f"❌ Xato: {e}", 500
+
+
+# ================= TELEGRAM BOT WEBHOOK =================
+def tg_send(chat_id, text):
+    """Berilgan chat_id ga xabar yuborish"""
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=10
+        )
+    except Exception as e:
+        print("tg_send xato:", e)
+
+
+def tg_send_file(chat_id, file_bytes, filename, caption):
+    """Berilgan chat_id ga fayl yuborish"""
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument",
+            data={"chat_id": chat_id, "caption": caption},
+            files={"document": (filename, file_bytes)},
+            timeout=30
+        )
+    except Exception as e:
+        print("tg_send_file xato:", e)
+
+
+def bot_get_data():
+    """Bot uchun ma'lumotlar olish"""
+    conn = get_db()
+    c = conn.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+    month = datetime.now().strftime("%Y-%m")
+
+    c.execute("""
+        SELECT c.name, c.balance,
+               IFNULL((SELECT SUM(amount) FROM expenses WHERE company_id=c.id AND date(created_at)=date('now')),0) as today_exp,
+               IFNULL((SELECT SUM(amount) FROM expenses WHERE company_id=c.id AND strftime('%Y-%m',created_at)=?),0) as month_exp,
+               (SELECT username FROM users WHERE company_id=c.id AND role='director' LIMIT 1) as director
+        FROM companies c ORDER BY c.balance DESC
+    """, (month,))
+    companies = c.fetchall()
+
+    c.execute("SELECT IFNULL(SUM(balance),0) FROM companies")
+    total_balance = c.fetchone()[0]
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE date(created_at)=date('now')")
+    total_today_exp = c.fetchone()[0]
+
+    # Gullar
+    try:
+        c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE date(created_at)=date('now')")
+        flowers_today = c.fetchone()[0]
+        c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE strftime('%Y-%m',created_at)=?", (month,))
+        flowers_month = c.fetchone()[0]
+        c.execute("""
+            SELECT f.name, SUM(h.quantity) as total
+            FROM flower_harvests h JOIN flowers f ON h.flower_id=f.id
+            WHERE date(h.created_at)=date('now')
+            GROUP BY f.name ORDER BY total DESC
+        """)
+        flowers_by_type = c.fetchall()
+    except:
+        flowers_today = flowers_month = 0
+        flowers_by_type = []
+
+    # Bugungi xarajatlar
+    c.execute("""
+        SELECT e.amount, e.description, c.name as company
+        FROM expenses e JOIN companies c ON e.company_id=c.id
+        WHERE date(e.created_at)=date('now')
+        ORDER BY e.created_at DESC LIMIT 10
+    """)
+    today_expenses = c.fetchall()
+
+    conn.close()
+    return dict(
+        companies=companies,
+        total_balance=total_balance,
+        total_today_exp=total_today_exp,
+        flowers_today=flowers_today,
+        flowers_month=flowers_month,
+        flowers_by_type=flowers_by_type,
+        today_expenses=today_expenses,
+        today=today,
+        month=month
+    )
+
+
+def bot_cmd_hisobot(chat_id):
+    """/hisobot — umumiy holat"""
+    d = bot_get_data()
+    comp_lines = ""
+    for c in d["companies"]:
+        icon = "🟢" if c["balance"] > 0 else "🔴"
+        comp_lines += (
+            f"\n{icon} <b>{c['name']}</b>\n"
+            f"   💰 <code>{c['balance']:,} so'm</code>  "
+            f"☀️ <code>{c['today_exp']:,} so'm</code>"
+        )
+
+    flower_lines = ""
+    if d["flowers_today"] > 0:
+        for f in d["flowers_by_type"]:
+            flower_lines += f"\n   🌸 {f['name']}: <code>{f['total']:,} ta</code>"
+    else:
+        flower_lines = "\n   Bugun terim yo'q"
+
+    tg_send(chat_id,
+        f"📊 <b>JORIY HOLAT</b>\n"
+        f"📅 {d['today']}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"💳 Jami balans: <code>{d['total_balance']:,} so'm</code>\n"
+        f"☀️ Bugungi xarajat: <code>{d['total_today_exp']:,} so'm</code>\n\n"
+        f"🌸 Bugungi terim: <code>{d['flowers_today']:,} ta</code>\n"
+        f"📅 Oylik terim: <code>{d['flowers_month']:,} ta</code>"
+        f"{flower_lines}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"🏢 <b>KOMPANIYALAR</b>{comp_lines}"
+    )
+
+
+def bot_cmd_balans(chat_id):
+    """/balans — kompaniyalar balansi"""
+    d = bot_get_data()
+    lines = ""
+    for i, c in enumerate(d["companies"], 1):
+        icon = "🟢" if c["balance"] > 0 else "🔴"
+        dir_txt = f"👔 {c['director']}" if c["director"] else ""
+        lines += (
+            f"\n{i}. {icon} <b>{c['name']}</b> {dir_txt}\n"
+            f"   💰 Balans: <code>{c['balance']:,} so'm</code>\n"
+            f"   ☀️ Bugun: <code>{c['today_exp']:,} so'm</code>\n"
+            f"   📅 Oy: <code>{c['month_exp']:,} so'm</code>\n"
+        )
+
+    tg_send(chat_id,
+        f"💰 <b>KOMPANIYALAR BALANSI</b>\n"
+        f"📅 {d['today']}\n\n"
+        f"━━━━━━━━━━━━━━━━━━"
+        f"{lines}\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"💳 Jami: <code>{d['total_balance']:,} so'm</code>"
+    )
+
+
+def bot_cmd_bugun(chat_id):
+    """/bugun — bugungi terim va xarajatlar"""
+    d = bot_get_data()
+
+    # Gullar
+    flower_lines = ""
+    if d["flowers_today"] > 0:
+        for f in d["flowers_by_type"]:
+            flower_lines += f"\n   🌸 {f['name']}: <code>{f['total']:,} ta</code>"
+    else:
+        flower_lines = "\n   Hali terim kiritilmagan"
+
+    # Xarajatlar
+    exp_lines = ""
+    if d["today_expenses"]:
+        for e in d["today_expenses"]:
+            exp_lines += f"\n   • {e['company']}: <code>{e['amount']:,} so'm</code> — {e['description'] or '—'}"
+    else:
+        exp_lines = "\n   Bugun xarajat yo'q"
+
+    tg_send(chat_id,
+        f"☀️ <b>BUGUN — {d['today']}</b>\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"🌸 <b>TERIM</b>\n"
+        f"Jami: <code>{d['flowers_today']:,} ta</code>"
+        f"{flower_lines}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"💸 <b>XARAJATLAR</b>\n"
+        f"Jami: <code>{d['total_today_exp']:,} so'm</code>"
+        f"{exp_lines}"
+    )
+
+
+def bot_cmd_excel(chat_id):
+    """/excel — Excel fayl yuborish"""
+    tg_send(chat_id, "⏳ Excel fayl tayyorlanmoqda...")
+    try:
+        from daily_report import get_report_data, create_excel
+        data = get_report_data()
+        excel_bytes = create_excel(data)
+        today = datetime.now().strftime("%Y-%m-%d")
+        tg_send_file(chat_id, excel_bytes, f"hisobot_{today}.xlsx",
+                     f"📊 Excel hisobot — {today}")
+    except Exception as e:
+        tg_send(chat_id, f"❌ Xato: {e}")
+
+
+def bot_cmd_help(chat_id):
+    """/start yoki /help"""
+    tg_send(chat_id,
+        "🤖 <b>Issiqxona Bot</b>\n\n"
+        "Quyidagi buyruqlardan foydalaning:\n\n"
+        "📊 /hisobot — Umumiy holat (balans + terim)\n"
+        "💰 /balans — Kompaniyalar balansi\n"
+        "☀️ /bugun — Bugungi terim va xarajatlar\n"
+        "📥 /excel — Excel hisobot fayli\n\n"
+        "❓ /help — Ushbu yordam xabari"
+    )
+
+
+@app.route("/telegram/webhook", methods=["POST"])
+def telegram_webhook():
+    """Telegram dan kelgan xabarlarni qabul qilish"""
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return "ok", 200
+
+        message = data.get("message") or data.get("edited_message")
+        if not message:
+            return "ok", 200
+
+        chat_id = message.get("chat", {}).get("id")
+        text = message.get("text", "").strip()
+
+        if not chat_id or not text:
+            return "ok", 200
+
+        # Buyruqlar
+        if text.startswith("/start") or text.startswith("/help"):
+            bot_cmd_help(chat_id)
+        elif text.startswith("/hisobot"):
+            bot_cmd_hisobot(chat_id)
+        elif text.startswith("/balans"):
+            bot_cmd_balans(chat_id)
+        elif text.startswith("/bugun"):
+            bot_cmd_bugun(chat_id)
+        elif text.startswith("/excel"):
+            bot_cmd_excel(chat_id)
+        else:
+            tg_send(chat_id,
+                "❓ Noma'lum buyruq.\n\n"
+                "📋 Mavjud buyruqlar:\n"
+                "/hisobot — Umumiy holat\n"
+                "/balans — Kompaniyalar balansi\n"
+                "/bugun — Bugungi ma'lumotlar\n"
+                "/excel — Excel fayl\n"
+                "/help — Yordam"
+            )
+
+    except Exception as e:
+        print(f"Webhook xato: {e}")
+
+    return "ok", 200
+
+
+@app.route("/admin/set-webhook")
+def admin_set_webhook():
+    """Webhookni Telegram ga ro'yxatdan o'tkazish — bir marta bajarish kerak"""
+    if session.get("role") != "admin":
+        return "Ruxsat yo'q ❌", 403
+    host = request.host_url.rstrip("/")
+    webhook_url = f"{host}/telegram/webhook"
+    try:
+        res = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook",
+            data={"url": webhook_url},
+            timeout=10
+        )
+        result = res.json()
+        if result.get("ok"):
+            return f"✅ Webhook o'rnatildi: {webhook_url}", 200
+        else:
+            return f"❌ Xato: {result}", 400
+    except Exception as e:
+        return f"❌ {e}", 500
+
 
 if __name__ == "__main__":
     app.run(debug=False)

@@ -166,6 +166,100 @@
         </div>
     </div>
 
+    <!-- TOP 3 + HEATMAP -->
+    <div class="grid-2">
+
+        <!-- TOP 3 ENG KO'P GUL -->
+        <div class="card">
+            <div class="card-title">🏆 Bu oyning top 3 guli</div>
+            {% if top3 %}
+            {% set medals = ['🥇','🥈','🥉'] %}
+            {% set colors = ['#f59e0b','#94a3b8','#b45309'] %}
+            {% set max_val = top3[0].total %}
+            {% for fl in top3 %}
+            <div style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:22px;">{{ medals[loop.index0] }}</span>
+                        <span style="font-weight:700;font-size:15px;">🌸 {{ fl.flower }}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#16a34a;">{{ "{:,}".format(fl.total) }} ta</div>
+                        <div style="font-size:11px;color:var(--muted);">1-sort: {{"{:,}".format(fl.s1)}} · 2-sort: {{"{:,}".format(fl.s2)}}</div>
+                    </div>
+                </div>
+                <div style="background:#f0f4ff;border-radius:8px;height:10px;overflow:hidden;">
+                    <div style="height:100%;border-radius:8px;background:linear-gradient(90deg,#16a34a,#00d4aa);width:{{ ((fl.total / max_val) * 100)|int }}%;transition:width .6s;"></div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color:var(--muted);text-align:center;padding:20px;">Bu oy ma'lumot yo'q</p>
+            {% endif %}
+        </div>
+
+        <!-- HEATMAP -->
+        <div class="card">
+            <div class="card-title">🗓 Faollik xaritasi (oxirgi 10 hafta)</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+                {% for d in heatmap_days %}
+                <div title="{{ d.date }}: {{ '{:,}'.format(d.val) }} ta"
+                     style="width:14px;height:14px;border-radius:3px;cursor:default;
+                     background:{% if d.level==0 %}#f0f4ff{% elif d.level==1 %}#bbf7d0{% elif d.level==2 %}#4ade80{% elif d.level==3 %}#16a34a{% else %}#14532d{% endif %};">
+                </div>
+                {% endfor %}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--muted);">
+                <span>Kam</span>
+                {% for clr in ['#f0f4ff','#bbf7d0','#4ade80','#16a34a','#14532d'] %}
+                <div style="width:12px;height:12px;border-radius:2px;background:{{ clr }};"></div>
+                {% endfor %}
+                <span>Ko'p</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- O'SISH GRAFIGI -->
+    {% if growth_data %}
+    <div class="card">
+        <div class="card-title">📈 Haftalik/oylik o'sish grafigi (oxirgi 6 oy)</div>
+        <canvas id="growthChart" height="120"></canvas>
+    </div>
+    {% endif %}
+
+    <!-- KOMPANIYA TAQQOSLASH -->
+    {% if comp_compare %}
+    <div class="card">
+        <div class="card-title">⚖️ Kompaniyalar taqqoslash (bu oy)</div>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Gul</th>
+                    {% for comp in companies %}
+                    <th style="text-align:right;">🏢 {{ comp.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% set flowers_compare = comp_compare | map(attribute='flower') | list | unique | list %}
+                {% for fl in flowers_compare %}
+                <tr>
+                    <td><strong>🌸 {{ fl }}</strong></td>
+                    {% for comp in companies %}
+                    {% set val = comp_compare | selectattr('company', 'eq', comp.name) | selectattr('flower', 'eq', fl) | map(attribute='total') | list %}
+                    <td style="text-align:right;font-weight:700;color:#16a34a;">
+                        {{ "{:,}".format(val[0] if val else 0) }} ta
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- KOMPANIYA KARTALAR -->
     <div class="card-title" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:16px;">🏢 Kompaniya bo'yicha batafsil</div>
     {% set ns = namespace(last_comp='') %}
@@ -300,6 +394,39 @@ function filterDays() {
         item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
 }
+
+// O'sish grafigi
+{% if growth_data %}
+const growthMonths = {{ months_set | tojson }};
+const growthColors = ['#16a34a','#3b6ef6','#f59e0b','#ef4444','#8b5cf6','#00d4aa'];
+const growthDatasets = [
+    {% for fl in flowers_set %}
+    {
+        label: '🌸 {{ fl }}',
+        data: {{ growth_data[fl].values() | list | tojson }},
+        borderColor: growthColors[{{ loop.index0 }} % growthColors.length],
+        backgroundColor: growthColors[{{ loop.index0 }} % growthColors.length] + '22',
+        borderWidth: 2.5, tension: 0.4, fill: true,
+        pointRadius: 4, pointHoverRadius: 6
+    },
+    {% endfor %}
+];
+new Chart(document.getElementById('growthChart'), {
+    type: 'line',
+    data: {labels: growthMonths, datasets: growthDatasets},
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {position: 'bottom', labels: {padding: 14, font: {size: 11}}},
+            tooltip: {callbacks: {label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' ta'}}
+        },
+        scales: {
+            y: {grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {callback: v => v.toLocaleString()}},
+            x: {grid: {display: false}}
+        }
+    }
+});
+{% endif %}
 
 // Trend chart
 {% if daily_trend %}
