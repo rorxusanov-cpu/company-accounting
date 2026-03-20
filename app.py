@@ -42,7 +42,7 @@ def send_telegram_message(text):
 
 
 def tg_notify_director(user_id, text):
-    """Direktarga o'z Telegram ga xabar yuborish"""
+    """Direktarga direktor boti orqali xabar yuborish"""
     try:
         conn = get_db()
         c = conn.cursor()
@@ -51,7 +51,7 @@ def tg_notify_director(user_id, text):
         conn.close()
         if row and row["telegram_chat_id"]:
             requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                f"https://api.telegram.org/bot{DIRECTOR_BOT_TOKEN}/sendMessage",
                 data={"chat_id": row["telegram_chat_id"], "text": text, "parse_mode": "HTML"},
                 timeout=5
             )
@@ -3726,6 +3726,25 @@ def telegram_director_webhook():
         data = request.get_json(silent=True)
         if not data:
             return "ok", 200
+
+        # Callback query (tugma bosilganda)
+        callback = data.get("callback_query")
+        if callback:
+            chat_id = callback.get("from", {}).get("id")
+            cb_data = callback.get("data", "")
+            cb_id = callback.get("id")
+            try:
+                requests.post(
+                    f"https://api.telegram.org/bot{DIRECTOR_BOT_TOKEN}/answerCallbackQuery",
+                    data={"callback_query_id": cb_id}, timeout=5
+                )
+            except:
+                pass
+            if chat_id:
+                _director_handle(chat_id, cb_data, is_callback=True)
+            return "ok", 200
+
+        # Oddiy xabar
         message = data.get("message") or data.get("edited_message")
         if not message:
             return "ok", 200
@@ -3734,191 +3753,358 @@ def telegram_director_webhook():
         if not chat_id or not text:
             return "ok", 200
 
-        conn = get_db()
-        c = conn.cursor()
-
-        # Bu chat_id ga tegishli direktor bormi?
-        c.execute("SELECT id, username, company_id FROM users WHERE telegram_chat_id=? AND role='director'", (str(chat_id),))
-        director = c.fetchone()
-
-        # /start — kirish
-        if text.startswith("/start"):
-            parts = text.split()
-            if len(parts) == 3:
-                _, login, parol = parts
-                c.execute("SELECT id, username, password, company_id FROM users WHERE username=? AND role='director'", (login,))
-                user = c.fetchone()
-                if user and check_password_hash(user["password"], parol):
-                    c.execute("UPDATE users SET telegram_chat_id=? WHERE id=?", (str(chat_id), user["id"]))
-                    conn.commit()
-                    comp_name = "—"
-                    if user["company_id"]:
-                        c.execute("SELECT name FROM companies WHERE id=?", (user["company_id"],))
-                        comp = c.fetchone()
-                        if comp:
-                            comp_name = comp["name"]
-                    conn.close()
-                    director_bot_send(chat_id,
-                        f"✅ <b>Muvaffaqiyatli kirdingiz!</b>\n\n"
-                        f"👤 Direktor: <b>{user['username']}</b>\n"
-                        f"🏢 Kompaniya: <b>{comp_name}</b>\n\n"
-                        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
-                        f"📊 /hisobot — Kompaniyam holati\n"
-                        f"💰 /balans — Balans va xarajatlar\n"
-                        f"🌸 /terim — Bugungi terim\n"
-                        f"📥 /excel — Excel hisobot\n"
-                        f"❓ /help — Buyruqlar"
-                    )
-                else:
-                    conn.close()
-                    director_bot_send(chat_id,
-                        f"❌ <b>Login yoki parol noto'g'ri!</b>\n\n"
-                        f"Format: <code>/start LOGIN PAROL</code>\n"
-                        f"Masalan: <code>/start Ahmad abc123xyz</code>"
-                    )
-            else:
-                conn.close()
-                director_bot_send(chat_id,
-                    f"👋 <b>Issiqxona Direktor Boti</b>\n\n"
-                    f"Kirish uchun:\n"
-                    f"<code>/start LOGIN PAROL</code>\n\n"
-                    f"Login va parol admin tomonidan\n"
-                    f"Telegram ga yuborilgan. 🔑"
-                )
-            return "ok", 200
-
-        # Kirmagan bo'lsa
-        if not director:
-            conn.close()
-            director_bot_send(chat_id,
-                f"🔒 <b>Avval tizimga kiring!</b>\n\n"
-                f"<code>/start LOGIN PAROL</code>"
-            )
-            return "ok", 200
-
-        company_id = director["company_id"]
-        today = datetime.now().strftime("%Y-%m-%d")
-        month = datetime.now().strftime("%Y-%m")
-
-        if text.startswith("/hisobot"):
-            c.execute("SELECT name, balance FROM companies WHERE id=?", (company_id,))
-            comp = c.fetchone()
-            c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND date(created_at)=date('now')", (company_id,))
-            today_exp = c.fetchone()[0]
-            c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND strftime('%Y-%m',created_at)=?", (company_id, month))
-            month_exp = c.fetchone()[0]
-            try:
-                c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND date(created_at)=date('now')", (company_id,))
-                flowers_today = c.fetchone()[0]
-                c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND strftime('%Y-%m',created_at)=?", (company_id, month))
-                flowers_month = c.fetchone()[0]
-            except:
-                flowers_today = flowers_month = 0
-            conn.close()
-            bal = comp["balance"] if comp else 0
-            bal_icon = "🟢" if bal > 500_000 else ("🟡" if bal > 0 else "🔴")
-            director_bot_send(chat_id,
-                f"┌──────────────────────┐\n"
-                f"│  📊  <b>KOMPANIYAM HOLATI</b>  │\n"
-                f"└──────────────────────┘\n"
-                f"🏢 <b>{comp['name'] if comp else '—'}</b>\n"
-                f"📅 {today}\n\n"
-                f"{bal_icon} Balans: <b><code>{bal:,} so'm</code></b>\n"
-                f"☀️ Bugun xarajat: <code>{today_exp:,} so'm</code>\n"
-                f"📅 Oylik xarajat: <code>{month_exp:,} so'm</code>\n\n"
-                f"🌸 Bugun terim: <code>{flowers_today:,} ta</code>\n"
-                f"📅 Oylik terim: <code>{flowers_month:,} ta</code>"
-            )
-
-        elif text.startswith("/balans"):
-            c.execute("SELECT name, balance FROM companies WHERE id=?", (company_id,))
-            comp = c.fetchone()
-            c.execute("SELECT amount, description, created_at FROM expenses WHERE company_id=? ORDER BY created_at DESC LIMIT 5", (company_id,))
-            last_exp = c.fetchall()
-            conn.close()
-            bal = comp["balance"] if comp else 0
-            bal_icon = "🟢" if bal > 500_000 else ("🟡" if bal > 0 else "🔴")
-            exp_lines = ""
-            for e in last_exp:
-                exp_lines += f"\n  • <code>{e['amount']:,} so'm</code> — {e['description'] or '—'}"
-            director_bot_send(chat_id,
-                f"┌──────────────────────┐\n"
-                f"│  💰  <b>BALANS</b>  💰  │\n"
-                f"└──────────────────────┘\n"
-                f"🏢 <b>{comp['name'] if comp else '—'}</b>\n\n"
-                f"{bal_icon} Balans: <b><code>{bal:,} so'm</code></b>\n\n"
-                f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
-                f"💸 So'nggi 5 xarajat:"
-                f"{exp_lines if exp_lines else chr(10) + '  Hali xarajat yoq'}"
-            )
-
-        elif text.startswith("/terim"):
-            try:
-                c.execute("""
-                    SELECT f.name, SUM(h.quantity) as total,
-                           SUM(CASE WHEN h.note!='2-sort' THEN h.quantity ELSE 0 END) as s1,
-                           SUM(CASE WHEN h.note='2-sort' THEN h.quantity ELSE 0 END) as s2
-                    FROM flower_harvests h JOIN flowers f ON h.flower_id=f.id
-                    WHERE h.company_id=? AND date(h.created_at)=date('now')
-                    GROUP BY f.name ORDER BY total DESC
-                """, (company_id,))
-                rows = c.fetchall()
-                c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND date(created_at)=date('now')", (company_id,))
-                total = c.fetchone()[0]
-            except:
-                rows = []
-                total = 0
-            conn.close()
-            flower_lines = ""
-            for r in rows:
-                flower_lines += (
-                    f"\n  🌸 <b>{r['name']}</b>: <code>{r['total']:,} ta</code>\n"
-                    f"     1-sort: {r['s1']:,} | 2-sort: {r['s2']:,}"
-                )
-            director_bot_send(chat_id,
-                f"┌──────────────────────┐\n"
-                f"│  🌸  <b>BUGUNGI TERIM</b>  🌸  │\n"
-                f"└──────────────────────┘\n"
-                f"📅 {today}\n\n"
-                f"Jami: <b><code>{total:,} ta</code></b>"
-                f"{flower_lines if flower_lines else chr(10) + '  Hali terim kiritilmagan'}"
-            )
-
-        elif text.startswith("/excel"):
-            conn.close()
-            director_bot_send(chat_id, "⏳ <b>Excel tayyorlanmoqda...</b>")
-            try:
-                from daily_report import get_report_data, create_excel
-                data = get_report_data()
-                excel_bytes = create_excel(data)
-                director_bot_send_file(chat_id, excel_bytes,
-                    f"hisobot_{today}.xlsx", f"📊 Excel hisobot — {today}")
-            except Exception as e:
-                director_bot_send(chat_id, f"❌ Xatolik: <code>{e}</code>")
-
-        elif text.startswith("/help"):
-            conn.close()
-            director_bot_send(chat_id,
-                f"┌──────────────────────┐\n"
-                f"│  🤖  <b>DIREKTOR BOT</b>  🤖  │\n"
-                f"└──────────────────────┘\n\n"
-                f"📊 /hisobot — Kompaniyam umumiy holati\n"
-                f"💰 /balans — Balans va so'nggi xarajatlar\n"
-                f"🌸 /terim — Bugungi terim\n"
-                f"📥 /excel — Excel hisobot fayli\n"
-                f"❓ /help — Buyruqlar ro'yxati"
-            )
-        else:
-            conn.close()
-            director_bot_send(chat_id,
-                "❓ Noma'lum buyruq.\n\n"
-                "/hisobot  /balans  /terim  /excel  /help"
-            )
+        _director_handle(chat_id, text, is_callback=False)
 
     except Exception as e:
         print(f"Director webhook xato: {e}")
 
     return "ok", 200
+
+
+def _director_keyboard():
+    """Asosiy menyu inline keyboard"""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "📊 Umumiy holat",   "callback_data": "menu_hisobot"},
+                {"text": "💰 Balans",          "callback_data": "menu_balans"}
+            ],
+            [
+                {"text": "🌸 Bugungi terim",   "callback_data": "menu_terim"},
+                {"text": "📅 Oylik terim",     "callback_data": "menu_oyterim"}
+            ],
+            [
+                {"text": "💸 Xarajatlar",      "callback_data": "menu_xarajat"},
+                {"text": "📈 Haftalik grafik",  "callback_data": "menu_hafta"}
+            ],
+            [
+                {"text": "📥 Excel yuklab olish", "callback_data": "menu_excel"}
+            ],
+            [
+                {"text": "🔑 Parol o'zgartirish", "callback_data": "menu_parol"}
+            ]
+        ]
+    }
+
+
+def _director_bot_send_menu(chat_id, text):
+    """Menyuli xabar yuborish"""
+    try:
+        import json
+        requests.post(
+            f"https://api.telegram.org/bot{DIRECTOR_BOT_TOKEN}/sendMessage",
+            data={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "reply_markup": json.dumps(_director_keyboard())
+            },
+            timeout=10
+        )
+    except Exception as e:
+        print("menu send xato:", e)
+
+
+def _director_get_data(company_id):
+    """Direktor uchun barcha ma'lumotlar"""
+    conn = get_db()
+    c = conn.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+    month = datetime.now().strftime("%Y-%m")
+
+    c.execute("SELECT name, balance FROM companies WHERE id=?", (company_id,))
+    comp = c.fetchone()
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND date(created_at)=date('now')", (company_id,))
+    today_exp = c.fetchone()[0]
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=? AND strftime('%Y-%m',created_at)=?", (company_id, month))
+    month_exp = c.fetchone()[0]
+    c.execute("SELECT IFNULL(SUM(amount),0) FROM expenses WHERE company_id=?", (company_id,))
+    total_exp = c.fetchone()[0]
+
+    try:
+        c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND date(created_at)=date('now')", (company_id,))
+        flowers_today = c.fetchone()[0]
+        c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND strftime('%Y-%m',created_at)=?", (company_id, month))
+        flowers_month = c.fetchone()[0]
+        c.execute("""
+            SELECT f.name, SUM(h.quantity) as total,
+                   SUM(CASE WHEN h.note!='2-sort' THEN h.quantity ELSE 0 END) as s1,
+                   SUM(CASE WHEN h.note='2-sort' THEN h.quantity ELSE 0 END) as s2
+            FROM flower_harvests h JOIN flowers f ON h.flower_id=f.id
+            WHERE h.company_id=? AND date(h.created_at)=date('now')
+            GROUP BY f.name ORDER BY total DESC
+        """, (company_id,))
+        flowers_by_type = c.fetchall()
+        weekly = []
+        for i in range(6, -1, -1):
+            day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            c.execute("SELECT IFNULL(SUM(quantity),0) FROM flower_harvests WHERE company_id=? AND date(created_at)=?", (company_id, day))
+            weekly.append((day[-5:], c.fetchone()[0]))
+    except:
+        flowers_today = flowers_month = 0
+        flowers_by_type = []
+        weekly = []
+
+    c.execute("SELECT amount, description, created_at FROM expenses WHERE company_id=? ORDER BY created_at DESC LIMIT 7", (company_id,))
+    last_expenses = c.fetchall()
+
+    c.execute("""
+        SELECT date(created_at) as day, SUM(amount) as total
+        FROM expenses WHERE company_id=? AND strftime('%Y-%m',created_at)=?
+        GROUP BY day ORDER BY day DESC LIMIT 10
+    """, (company_id, month))
+    monthly_exp_days = c.fetchall()
+
+    conn.close()
+    return dict(
+        comp=comp, today_exp=today_exp, month_exp=month_exp,
+        total_exp=total_exp, flowers_today=flowers_today,
+        flowers_month=flowers_month, flowers_by_type=flowers_by_type,
+        weekly=weekly, last_expenses=last_expenses,
+        monthly_exp_days=monthly_exp_days, today=today, month=month
+    )
+
+
+def _director_handle(chat_id, action, is_callback=False):
+    """Barcha amallarni bajarish"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, username, company_id FROM users WHERE telegram_chat_id=? AND role='director'", (str(chat_id),))
+    director = c.fetchone()
+
+    # Kirish
+    if action.startswith("/start"):
+        parts = action.split()
+        if len(parts) == 3:
+            _, login, parol = parts
+            c.execute("SELECT id, username, password, company_id FROM users WHERE username=? AND role='director'", (login,))
+            user = c.fetchone()
+            if user and check_password_hash(user["password"], parol):
+                c.execute("UPDATE users SET telegram_chat_id=? WHERE id=?", (str(chat_id), user["id"]))
+                conn.commit()
+                comp_name = "—"
+                if user["company_id"]:
+                    c.execute("SELECT name FROM companies WHERE id=?", (user["company_id"],))
+                    comp = c.fetchone()
+                    if comp:
+                        comp_name = comp["name"]
+                conn.close()
+                _director_bot_send_menu(chat_id,
+                    f"✅ <b>Xush kelibsiz!</b>\n\n"
+                    f"👤 <b>{user['username']}</b>\n"
+                    f"🏢 <b>{comp_name}</b>\n\n"
+                    f"Quyidagi menyudan kerakli bo'limni tanlang 👇"
+                )
+            else:
+                conn.close()
+                director_bot_send(chat_id,
+                    f"❌ <b>Login yoki parol noto'g'ri!</b>\n\n"
+                    f"Format:\n<code>/start LOGIN PAROL</code>"
+                )
+        else:
+            conn.close()
+            director_bot_send(chat_id,
+                f"👋 <b>Issiqxona Direktor Boti</b>\n\n"
+                f"Kirish uchun:\n"
+                f"<code>/start LOGIN PAROL</code>\n\n"
+                f"Login va parol admin tomonidan\nTelegram ga yuborilgan 🔑"
+            )
+        return
+
+    if not director:
+        conn.close()
+        director_bot_send(chat_id, f"🔒 <b>Avval tizimga kiring!</b>\n\n<code>/start LOGIN PAROL</code>")
+        return
+
+    company_id = director["company_id"]
+    username = director["username"]
+    conn.close()
+
+    if action in ("/menu", "/help") or (not action.startswith("menu_") and not action.startswith("parol_") and is_callback is False):
+        d = _director_get_data(company_id)
+        bal = d["comp"]["balance"] if d["comp"] else 0
+        bal_icon = "🟢" if bal > 500_000 else ("🟡" if bal > 0 else "🔴")
+        _director_bot_send_menu(chat_id,
+            f"🌿 <b>Asosiy menyu</b>\n\n"
+            f"👤 {username}  •  🏢 {d['comp']['name'] if d['comp'] else '—'}\n"
+            f"{bal_icon} Balans: <b><code>{bal:,} so'm</code></b>\n"
+            f"🌸 Bugun terim: <code>{d['flowers_today']:,} ta</code>\n\n"
+            f"Bo'limni tanlang 👇"
+        )
+        return
+
+    d = _director_get_data(company_id)
+    bal = d["comp"]["balance"] if d["comp"] else 0
+    bal_icon = "🟢" if bal > 500_000 else ("🟡" if bal > 0 else "🔴")
+    comp_name = d["comp"]["name"] if d["comp"] else "—"
+
+    if action == "menu_hisobot":
+        flower_lines = ""
+        for f in d["flowers_by_type"]:
+            flower_lines += f"\n  🌸 <b>{f['name']}</b>: <code>{f['total']:,} ta</code>  (1-sort: {f['s1']:,} | 2-sort: {f['s2']:,})"
+        _director_bot_send_menu(chat_id,
+            f"┌──────────────────────┐\n"
+            f"│  📊  <b>UMUMIY HOLAT</b>  📊  │\n"
+            f"└──────────────────────┘\n"
+            f"🏢 <b>{comp_name}</b>  •  📅 {d['today']}\n\n"
+            f"{bal_icon} Balans: <b><code>{bal:,} so'm</code></b>\n\n"
+            f"💸 Bugun xarajat:  <code>{d['today_exp']:,} so'm</code>\n"
+            f"📅 Oylik xarajat:  <code>{d['month_exp']:,} so'm</code>\n"
+            f"📊 Jami xarajat:   <code>{d['total_exp']:,} so'm</code>\n\n"
+            f"🌸 Bugun terim: <b><code>{d['flowers_today']:,} ta</code></b>\n"
+            f"📅 Oylik terim: <code>{d['flowers_month']:,} ta</code>"
+            + (flower_lines if flower_lines else "\n  Bugun terim kiritilmagan")
+        )
+
+    elif action == "menu_balans":
+        exp_lines = ""
+        for e in d["last_expenses"]:
+            desc = (e["description"] or "—")[:25]
+            exp_lines += f"\n  • <code>{e['amount']:,} so'm</code> — {desc}"
+        _director_bot_send_menu(chat_id,
+            f"┌──────────────────────┐\n"
+            f"│  💰  <b>BALANS</b>  💰  │\n"
+            f"└──────────────────────┘\n"
+            f"🏢 <b>{comp_name}</b>\n\n"
+            f"{bal_icon} Joriy balans:\n<b><code>{bal:,} so'm</code></b>\n\n"
+            f"💸 So'nggi xarajatlar:"
+            + (exp_lines if exp_lines else "\n  Hali xarajat yo'q")
+        )
+
+    elif action == "menu_terim":
+        flower_lines = ""
+        for f in d["flowers_by_type"]:
+            flower_lines += (
+                f"\n\n  🌸 <b>{f['name']}</b>\n"
+                f"  Jami: <code>{f['total']:,} ta</code>\n"
+                f"  1-sort: <code>{f['s1']:,}</code>  2-sort: <code>{f['s2']:,}</code>"
+            )
+        _director_bot_send_menu(chat_id,
+            f"┌──────────────────────┐\n"
+            f"│  🌸  <b>BUGUNGI TERIM</b>  🌸  │\n"
+            f"└──────────────────────┘\n"
+            f"📅 {d['today']}\n\n"
+            f"Jami: <b><code>{d['flowers_today']:,} ta</code></b>"
+            + (flower_lines if flower_lines else "\n\n  ⚪️ Bugun terim kiritilmagan")
+        )
+
+    elif action == "menu_oyterim":
+        month_name = datetime.now().strftime("%B %Y")
+        conn2 = get_db()
+        c2 = conn2.cursor()
+        try:
+            c2.execute("""
+                SELECT f.name, SUM(h.quantity) as total,
+                       SUM(CASE WHEN h.note!='2-sort' THEN h.quantity ELSE 0 END) as s1,
+                       SUM(CASE WHEN h.note='2-sort' THEN h.quantity ELSE 0 END) as s2
+                FROM flower_harvests h JOIN flowers f ON h.flower_id=f.id
+                WHERE h.company_id=? AND strftime('%Y-%m',h.created_at)=?
+                GROUP BY f.name ORDER BY total DESC
+            """, (company_id, d["month"]))
+            month_flowers = c2.fetchall()
+        except:
+            month_flowers = []
+        conn2.close()
+        flower_lines = ""
+        for f in month_flowers:
+            flower_lines += (
+                f"\n  🌸 <b>{f['name']}</b>: <code>{f['total']:,} ta</code>\n"
+                f"     1-sort: {f['s1']:,} | 2-sort: {f['s2']:,}"
+            )
+        _director_bot_send_menu(chat_id,
+            f"┌──────────────────────┐\n"
+            f"│  📅  <b>OYLIK TERIM</b>  📅  │\n"
+            f"└──────────────────────┘\n"
+            f"📆 <b>{month_name}</b>\n\n"
+            f"Jami: <b><code>{d['flowers_month']:,} ta</code></b>"
+            + (flower_lines if flower_lines else "\n\n  Bu oy terim kiritilmagan")
+        )
+
+    elif action == "menu_xarajat":
+        exp_lines = ""
+        for e in d["last_expenses"]:
+            desc = (e["description"] or "—")[:30]
+            sana = str(e["created_at"])[:16]
+            exp_lines += f"\n  📌 <code>{e['amount']:,} so'm</code> — {desc}\n     🕒 {sana}"
+        _director_bot_send_menu(chat_id,
+            f"┌──────────────────────┐\n"
+            f"│  💸  <b>XARAJATLAR</b>  💸  │\n"
+            f"└──────────────────────┘\n"
+            f"🏢 <b>{comp_name}</b>\n\n"
+            f"☀️ Bugun:  <code>{d['today_exp']:,} so'm</code>\n"
+            f"📅 Bu oy:  <b><code>{d['month_exp']:,} so'm</code></b>\n"
+            f"📊 Jami:   <code>{d['total_exp']:,} so'm</code>\n\n"
+            f"📋 So'nggi xarajatlar:"
+            + (exp_lines if exp_lines else "\n  Hali xarajat yo'q")
+        )
+
+    elif action == "menu_hafta":
+        if d["weekly"]:
+            max_val = max(v for _, v in d["weekly"]) or 1
+            chart = ""
+            for day, val in d["weekly"]:
+                bar_len = int(val / max_val * 10)
+                bar = "█" * bar_len + "░" * (10 - bar_len)
+                chart += f"\n{day} {bar} <code>{val:,}</code>"
+            _director_bot_send_menu(chat_id,
+                f"┌──────────────────────┐\n"
+                f"│  📈  <b>HAFTALIK TERIM</b>  📈  │\n"
+                f"└──────────────────────┘\n"
+                f"🏢 <b>{comp_name}</b>\nSo'nggi 7 kun:\n"
+                + chart +
+                f"\n\n📅 Oylik jami: <b><code>{d['flowers_month']:,} ta</code></b>"
+            )
+        else:
+            _director_bot_send_menu(chat_id, "📈 Hali ma'lumot yo'q")
+
+    elif action == "menu_excel":
+        director_bot_send(chat_id, "⏳ <b>Excel tayyorlanmoqda...</b>")
+        try:
+            from daily_report import get_report_data, create_excel
+            rdata = get_report_data()
+            excel_bytes = create_excel(rdata)
+            director_bot_send_file(chat_id, excel_bytes,
+                f"hisobot_{d['today']}.xlsx", f"📊 Excel hisobot — {d['today']}")
+        except Exception as e:
+            director_bot_send(chat_id, f"❌ Xatolik: <code>{e}</code>")
+
+    elif action == "menu_parol":
+        import json
+        keyboard = {"inline_keyboard": [[
+            {"text": "✅ Ha, yangi parol", "callback_data": "parol_confirm"},
+            {"text": "❌ Bekor", "callback_data": "menu_hisobot"}
+        ]]}
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{DIRECTOR_BOT_TOKEN}/sendMessage",
+                data={
+                    "chat_id": chat_id,
+                    "text": "🔑 <b>Parol o'zgartirish</b>\n\nYangi parol avtomatik yaratiladi va shu yerga yuboriladi.\n\nDavom etasizmi?",
+                    "parse_mode": "HTML",
+                    "reply_markup": json.dumps(keyboard)
+                },
+                timeout=10
+            )
+        except Exception as e:
+            print(e)
+
+    elif action == "parol_confirm":
+        import random, string
+        new_password = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+        conn3 = get_db()
+        c3 = conn3.cursor()
+        c3.execute("SELECT id FROM users WHERE telegram_chat_id=? AND role='director'", (str(chat_id),))
+        u = c3.fetchone()
+        if u:
+            c3.execute("UPDATE users SET password=? WHERE id=?", (generate_password_hash(new_password), u["id"]))
+            conn3.commit()
+        conn3.close()
+        _director_bot_send_menu(chat_id,
+            f"✅ <b>Yangi parol yaratildi!</b>\n\n"
+            f"🔑 Yangi parol: <code>{new_password}</code>\n\n"
+            f"⚠️ Ushbu parolni xavfsiz saqlang!\n"
+            f"Saytga kirish uchun ham ishlatiladi."
+        )
 
 
 if __name__ == "__main__":
